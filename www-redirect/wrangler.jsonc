@@ -1,0 +1,7 @@
+{
+  "name": "miroslaw-shpak-www",
+  "main": "index.js",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": false,
+  "routes": [{ "pattern": "www.miroslaw-shpak.dev", "custom_domain": true }]
+}

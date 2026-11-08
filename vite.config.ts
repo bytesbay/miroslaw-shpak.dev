@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { renderStory, renderNav, renderFooter, renderCv, head, llmsTxt, LOGO, type Stars } from './src/render'
 import { OPEN_SOURCE, SITE } from './src/content'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // Live GitHub star counts at build time, falling back to the numbers in content.ts.
 async function fetchStars(): Promise<Stars> {
   const out: Stars = {}
@@ -56,7 +58,7 @@ function site(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [site()],
+  plugins: [site(), cloudflare()],
   build: {
     target: 'es2020',
     assetsInlineLimit: 0,

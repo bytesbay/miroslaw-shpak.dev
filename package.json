@@ -7,17 +7,19 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview --port 4173",
-    "deploy": "vite build && wrangler pages deploy dist --project-name miroslaw-shpak --branch main"
+    "preview": "npm run build && wrangler dev",
+    "deploy": "vite build && wrangler deploy"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.67.0",
     "@types/node": "^26.6.6",
     "@types/three": "^0.187.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "wrangler": "^4.158.0"
   },
   "dependencies": {
     "three": "^0.187.0"

@@ -253,3 +253,13 @@ html.fx.scrolled .scroll-tip { opacity: 0; }
 }
 html.nofx .telemetry { display: none; }
 html.nofx .ch-approach .panel { max-width: 1000px; }
+@media (min-width: 761px) and (max-height: 880px) {
+  html.fx .panel-career h2 { font-size: 34px; margin-bottom: 12px; }
+  html.fx .panel-career .kicker { margin-bottom: 10px; }
+  html.fx .role-card { padding: 18px 22px; }
+  html.fx .role-card li { font-size: 14px; margin-bottom: 4px; }
+  html.fx .role-card .stack-line { display: none; }
+  html.fx .ch-career .stage { padding-top: 40px; }
+  html.fx .ch-stack .chips li { padding: 4px 9px; font-size: 12.5px; }
+  html.fx .ch-stack h2, html.fx .ch-about h2 { font-size: 38px; }
+}
