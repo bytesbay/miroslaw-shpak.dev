@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://miroslaw-shpak.dev/sitemap.xml
