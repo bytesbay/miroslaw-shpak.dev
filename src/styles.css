@@ -256,7 +256,7 @@ html.fx.scrolled .scroll-tip { opacity: 0; }
   html.fx .orbit-dots { display: none; }
   html.fx .panel { filter: none; }
   html.fx .panel::before { inset: -10% -12%; }
-  html.fx .hud { display: none; }
+  html.fx .hud, html.fx .scroll-tip { display: none; }
   .role-card { padding: 20px; }
   .stats b { font-size: 26px; }
   .os a:hover, .contacts a:hover, .btn:hover { transform: none; }
