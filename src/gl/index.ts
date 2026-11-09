@@ -154,6 +154,9 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
     }
   })
 
+  // compile all programs off the main thread where the driver supports it
+  try { await renderer.compileAsync(scene, camera) } catch {}
+
   // state
   const pose = newPose()
   const q = new Quaternion()

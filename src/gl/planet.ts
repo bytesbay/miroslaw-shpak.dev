@@ -1,4 +1,4 @@
-import { BufferGeometry, BufferAttribute, Mesh, ShaderMaterial, Color, Vector3, Matrix3 } from 'three'
+import { BufferGeometry, BufferAttribute, Mesh, ShaderMaterial, Color, Vector3, Matrix3, Sphere } from 'three'
 
 /*
   Procedural planets, generated on the GPU.
@@ -8,7 +8,14 @@ import { BufferGeometry, BufferAttribute, Mesh, ShaderMaterial, Color, Vector3, 
   so the old low-poly style survives at ~100x the detail.
 */
 
-export function sphereCube(n: number) {
+// Builds the sphere one cube face per task so a 2M-triangle planet never blocks input.
+export async function sphereCubeAsync(n: number) {
+  return sphereCube(n, true) as Promise<BufferGeometry>
+}
+
+export function sphereCube(n: number): BufferGeometry
+export function sphereCube(n: number, chunked: true): Promise<BufferGeometry>
+export function sphereCube(n: number, chunked = false): BufferGeometry | Promise<BufferGeometry> {
   const verts = 6 * (n + 1) * (n + 1)
   const pos = new Float32Array(verts * 3)
   const idx = new Uint32Array(6 * n * n * 6)
@@ -22,7 +29,7 @@ export function sphereCube(n: number) {
   ]
   let v = 0, k = 0
   const q = Math.PI / 4
-  for (let f = 0; f < 6; f++) {
+  const face = (f: number) => {
     const [c, a, b] = faces[f]
     const base = v
     for (let j = 0; j <= n; j++) {
@@ -46,11 +53,24 @@ export function sphereCube(n: number) {
       }
     }
   }
-  const g = new BufferGeometry()
-  g.setAttribute('position', new BufferAttribute(pos, 3))
-  g.setIndex(new BufferAttribute(idx, 1))
-  g.computeBoundingSphere()
-  return g
+  const finish = () => {
+    const g = new BufferGeometry()
+    g.setAttribute('position', new BufferAttribute(pos, 3))
+    g.setIndex(new BufferAttribute(idx, 1))
+    g.boundingSphere = new Sphere(new Vector3(), 1)
+    return g
+  }
+  if (!chunked) {
+    for (let f = 0; f < 6; f++) face(f)
+    return finish()
+  }
+  return (async () => {
+    for (let f = 0; f < 6; f++) {
+      face(f)
+      await new Promise((r) => setTimeout(r, 0))
+    }
+    return finish()
+  })()
 }
 
 const NOISE = /* glsl */ `
@@ -213,9 +233,11 @@ export function makeDetailedPlanet(o: PlanetOpts) {
         #include <colorspace_fragment>
       }`,
   })
-  const mesh = new Mesh(sphereCube(o.segs), mat)
+  const mesh = new Mesh(sphereCube(Math.min(o.segs, 32)), mat)
   mesh.onBeforeRender = bindRotation
-  mesh.geometry.boundingSphere!.radius = o.radius * (1 + o.amp * 1.5)
+  const fix = () => { mesh.geometry.boundingSphere!.radius = o.radius * (1 + o.amp * 1.5) }
+  fix()
+  sphereCubeAsync(o.segs).then((g) => { mesh.geometry.dispose(); mesh.geometry = g; fix() })
   return mesh
 }
 
@@ -275,9 +297,10 @@ export function makeClouds(o: { radius: number; segs: number; kind: 0 | 1; sun: 
       }`,
     transparent: true, depthWrite: false,
   })
-  const mesh = new Mesh(sphereCube(o.segs), mat)
+  const mesh = new Mesh(sphereCube(Math.min(o.segs, 32)), mat)
   mesh.scale.setScalar(o.radius)
   mesh.geometry.boundingSphere!.radius = 1.01
+  sphereCubeAsync(o.segs).then((g) => { mesh.geometry.dispose(); g.boundingSphere!.radius = 1.01; mesh.geometry = g })
   mesh.onBeforeRender = bindRotation
   mesh.renderOrder = 2
   return mesh

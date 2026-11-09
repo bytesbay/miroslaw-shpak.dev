@@ -13,8 +13,7 @@
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) ok = false
         if (innerHeight > 1800 || innerWidth < 300) ok = false
         if (/bot|crawl|spider|lighthouse|headless/i.test(navigator.userAgent) && !/[?&]fx/.test(location.search)) ok = false
-        var c = document.createElement('canvas')
-        if (!(c.getContext('webgl2') || c.getContext('webgl'))) ok = false
+        if (!('WebGL2RenderingContext' in window)) ok = false
       } catch (e) { ok = false }
       if (/[?&]nofx/.test(location.search)) ok = false
       d.className += ok ? ' fx' : ' nofx'
