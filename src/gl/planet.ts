@@ -238,6 +238,7 @@ export function bindRotation(this: Mesh) {
 }
 
 export type PlanetOpts = {
+  atmo?: { color: string; h: number; k: number }
   mapW: number
   radius: number
   kind: 0 | 1
@@ -271,6 +272,7 @@ const PLANET_FRAG = /* glsl */ `
     #endif
   }
   uniform float uKind, uR, uAmp; uniform vec3 uSun; uniform vec3 uSeed; uniform mat3 uNormalM;
+  uniform vec3 uAtmo; uniform float uAtmoH, uAtmoK;
   uniform vec3 cDeep, cShallow, cLow, cMid, cHigh, cPeak, cAmb, cFill, cSun, cLights;
   varying vec3 vP; varying vec3 vL; varying float vH; varying vec3 vW;
   void main(){
@@ -289,7 +291,7 @@ const PLANET_FRAG = /* glsl */ `
     float e=0.003;
     #endif
     e=max(e,fp*1.5);
-    float far=smoothstep(0.0006,0.004,fp);           // 0 close up, 1 when the planet is small
+    float far=smoothstep(0.003,0.03,fp);             // 0 close up, 1 when the planet is small
     float h=hAt(p0);
     float land=uKind<0.5?1.0:0.0;
     float h0=uKind<0.5?max(h,0.0):h;
@@ -343,6 +345,19 @@ const PLANET_FRAG = /* glsl */ `
       float dots=pow(max(tri(vP,18.0).r*2.0-1.0,0.0),5.0)*14.0;
       col+=cLights*mix(dots,0.12,far)*cluster*night*smoothstep(0.35,0.0,h);
     }
+    // Aerial haze over the surface, same model as the atmosphere shell. Computed here so it is
+    // identical whether the camera is inside or outside the atmosphere (no pop when climbing out).
+    if(uAtmoK>0.0){
+      float Lg=sqrt(6.2832*uR*uAtmoH);
+      float mu=max(dot(V,S),0.03);
+      float tau=min(uAtmoH/mu,Lg*1.4)*0.55;
+      float g=1.0-exp(-tau/(Lg*0.38));
+      float la=smoothstep(-0.28,0.45,sdot);
+      float ss=exp(-pow((sdot+0.03)*5.0,2.0));
+      vec3 ac=mix(uAtmo*vec3(0.5,0.6,1.0),uAtmo,g);
+      ac=mix(ac,vec3(1.0,0.5,0.36),ss*0.7);
+      col+=ac*g*(la+ss*0.55+0.02)*uAtmoK;
+    }
     gl_FragColor=vec4(col,1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -359,6 +374,7 @@ export function makeDetailedPlanet(renderer: WebGLRenderer, o: PlanetOpts) {
       uR: { value: o.radius }, uAmp: { value: o.amp }, uKind: { value: o.kind }, uSeed: { value: new Vector3(...o.seed) },
       uSun: { value: o.sun }, uTime: { value: 0 }, uNormalM: { value: new Matrix3() },
       uNoise: { value: noiseTexture() }, uCapCos: { value: -2 }, uHW: { value: o.mapW }, uPW: { value: 1 },
+      uAtmo: { value: new Color(o.atmo?.color ?? '#000000') }, uAtmoH: { value: o.atmo?.h ?? 1 }, uAtmoK: { value: o.atmo?.k ?? 0 },
       cDeep: col('deep'), cShallow: col('shallow'), cLow: col('low'), cMid: col('mid'), cHigh: col('high'), cPeak: col('peak'),
       cAmb: col('amb'), cFill: col('fill'), cSun: col('sun'), cLights: col('lights'),
     },
@@ -423,13 +439,14 @@ export function makeClouds(renderer: WebGLRenderer, o: { radius: number; segs: n
         // Prefiltered by distance: soft cloud masses from afar, wisps only close up.
         float fp=length(fwidth(vP));
         float d=textureLod(uMap, sphereUv(vP), log2(max(fp*uCW/6.2832,1.0))).r;
-        float near=1.0-smoothstep(0.0012,0.006,fp);
+        // pixel-art rendering makes one pixel ~3x larger on the sphere, so the near/far range is wide
+        // and only opacity fades with distance (the cloud shapes themselves never change)
+        float near=1.0-smoothstep(0.004,0.04,fp);
         d+=((tri(vP,9.0).r-0.5)*0.08+(tri(vP,28.0).g-0.5)*0.04)*near*smoothstep(0.0,0.2,d);
         float far=1.0-near;
-        // from afar only the dense cores remain and they turn translucent, so oceans and land read
-        float c=smoothstep(0.02+0.16*far,0.42+0.12*far,d);
+        float c=smoothstep(0.06,0.46,d);
         c*=c*(3.0-2.0*c);
-        c*=1.0-0.45*far;
+        c*=1.0-0.4*far;                                // translucent from afar so oceans and land read
         vec3 S=normalize(uNormalM*vP);
         vec3 V=normalize(cameraPosition-vW);
         float sd=dot(S,uSun);

@@ -11,18 +11,18 @@ import { sphereCube } from './planet'
   scale height H). Nothing depends on mesh normals, so the glow has no facets, and a small H keeps
   the layer thin: a bright line at the limb, soft haze at grazing angles, warm band at the terminator.
 */
-export function makeAtmosphere(radius: number, color: string, sun: Vector3, strength: number, center: Vector3, scaleHeight: number, terrain: number) {
+export function makeAtmosphere(radius: number, color: string, sun: Vector3, strength: number, center: Vector3, scaleHeight: number, terrain: number, lowest = radius) {
   const top = radius * (1 + terrain) + scaleHeight * 7
   const mat = new ShaderMaterial({
     uniforms: {
       uColor: { value: new Color(color) }, uSun: { value: sun }, uK: { value: strength }, uC: { value: center },
-      uR: { value: radius }, uH: { value: scaleHeight }, uTop: { value: top },
+      uR: { value: radius }, uH: { value: scaleHeight }, uTop: { value: top }, uRHit: { value: lowest },
     },
     vertexShader: /* glsl */ `
       varying vec3 vW;
       void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor, uSun, uC; uniform float uR, uH, uTop, uK;
+      uniform vec3 uColor, uSun, uC; uniform float uR, uH, uTop, uK, uRHit;
       varying vec3 vW;
       void main() {
         vec3 rd = normalize(vW - cameraPosition);
@@ -36,22 +36,16 @@ export function makeAtmosphere(radius: number, color: string, sun: Vector3, stre
         float sA = sqrt(dA);
         float t0 = outside ? -b - sA : 0.0;
         float t1 = -b + sA;
-        float dP = b * b - (c0 - uR * uR);
+        float dP = b * b - (c0 - uRHit * uRHit);   // lowest terrain (crater floors), not the base sphere
         bool hit = dP > 0.0 && (-b - sqrt(dP)) > 0.0;
         float tau; vec3 P;
         float Lg = sqrt(6.2832 * uR * uH);           // optical length of a grazing ray
-        if (hit) {
-          float tHit = -b - sqrt(dP);
-          vec3 n = normalize(oc + rd * tHit);
-          float mu = max(dot(-rd, n), 0.03);
-          tau = min(uH / mu, Lg * 1.4) * 0.55;       // Chapman-style slant path, kept light over the disc
-          P = oc + rd * mix(t0, tHit, 0.7);
-        } else {
-          float tc = clamp(-b, t0, t1);
-          P = oc + rd * tc;
-          float h = max(length(P) - uR, 0.0);
-          tau = exp(-h / uH) * min(t1 - t0, Lg);
-        }
+        if (hit) discard;                             // the surface haze is drawn by the planet shader
+        float tc = clamp(-b, t0, t1);
+        P = oc + rd * tc;
+        float h = max(length(P) - uR, 0.0);
+        tau = exp(-h / uH) * min(t1 - t0, Lg);
+        tau *= 0.15 + 0.85 * smoothstep(uRHit, uR, length(P));   // rays grazing below the base sphere are over terrain
         float glow = 1.0 - exp(-tau / (Lg * 0.38));
         vec3 n = normalize(P);
         float sd = dot(n, uSun);

@@ -105,7 +105,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   const home = new Group()
   const SEG_H = weak ? 128 : 192, SEG_D = weak ? 96 : 144
   const homeMesh = makeDetailedPlanet(renderer, {
-    mapW: weak ? 1024 : 2048, radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
+    atmo: { color: '#6f8dff', h: R_H * 0.009, k: 1.15 }, mapW: weak ? 1024 : 2048, radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
     colors: { deep: '#040a1c', shallow: '#123060', low: '#232a2b', mid: '#353240', high: '#4f4655', peak: '#cfcadc', amb: '#221d36', fill: '#4b55c8', sun: '#fff1e4', lights: '#ffb35c' },
   })
   const homeLo = new Mesh(sphereCube(48), homeMesh.material)
@@ -128,7 +128,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   dest.position.copy(C_D)
   await nextFrame()
   const destMesh = makeDetailedPlanet(renderer, {
-    mapW: weak ? 1024 : 2048, radius: R_D, kind: 1, segs: SEG_D, amp: 0.045, seed: [11.3, 2.2, 5.6], sun: SUN,
+    atmo: { color: '#ff6a9a', h: R_D * 0.012, k: 0.7 }, mapW: weak ? 1024 : 2048, radius: R_D, kind: 1, segs: SEG_D, amp: 0.045, seed: [11.3, 2.2, 5.6], sun: SUN,
     colors: { deep: '#000000', shallow: '#000000', low: '#1e0f1d', mid: '#4a2440', high: '#87485c', peak: '#d79a86', amb: '#2a1426', fill: '#7a3bb0', sun: '#fff1e4', lights: '#000000' },
   })
   const destLo = new Mesh(sphereCube(40), destMesh.material)
@@ -136,7 +136,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   destLo.onBeforeRender = bindRotation
   const ring = makePlanetRing(R_D * 1.38, R_D * 2.1, SUN)
   ring.lookAt(new Vector3(-0.12, 1, 0.3))
-  dest.add(destMesh, destLo, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.7, C_D, R_D * 0.012, 0.05), ring)
+  dest.add(destMesh, destLo, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.7, C_D, R_D * 0.012, 0.05, R_D * 0.95), ring)
   scene.add(dest)
   onProgress(0.45)
   await nextFrame()

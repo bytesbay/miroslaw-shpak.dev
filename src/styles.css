@@ -170,7 +170,7 @@ p { margin: 0 0 14px; color: #ddd8e8; }
 .contacts svg { width: 18px; height: 18px; color: var(--accent); }
 
 .foot { position: relative; z-index: 2; padding: 40px clamp(20px, 6vw, 96px) 60px; color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
-.foot p { margin: 0; color: var(--dim); }
+.foot p { margin: 0; color: #b4aec4; }
 .foot a { color: var(--muted); }
 
 .hud, .scroll-tip { display: none; }
@@ -301,6 +301,6 @@ html.nofx .ch-approach .panel { max-width: 1000px; }
 }
 /* footer overlays the empty bottom of the last sticky stage, so Contact never scrolls under the top bar */
 @media (min-width: 761px) and (min-height: 561px) {
-  html.fx .foot { margin-top: -120px; min-height: 120px; align-items: flex-end; padding-bottom: 28px; pointer-events: none; }
+  html.fx .foot { margin-top: -160px; min-height: 160px; align-items: flex-end; padding-bottom: 28px; pointer-events: none; background: linear-gradient(to bottom, transparent, rgba(7, 6, 12, 0.88) 55%, #07060c); }
   html.fx .foot a { pointer-events: auto; }
 }
