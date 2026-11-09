@@ -288,7 +288,9 @@ export function evaluate(t: number, out: Pose): Pose {
     out.f.copy(fwd)
     out.up.copy(slerpDir(K[2].up, UP_D, a, _w))
     out.sp.copy(K[2].sp).addScaledVector(K[2].f, 25 * easeSine(a))
-    out.sp.addScaledVector(DIR_D, K[3].sp.distanceTo(P_TURN) * Math.pow(b, 2.4))
+    // accelerate, but arrive at the rest point with zero speed (no lurch at the keyframe)
+    const gb = b * b * (3 - 2 * b)
+    out.sp.addScaledVector(DIR_D, K[3].sp.distanceTo(P_TURN) * Math.pow(gb, 1.6))
     const chase = chaseCo(fwd, out.up, 15, _t1)
     swing(K[2].co, chase, easeInOut(a), out.co)
     out.co.lerp(K[3].co, smooth(0.6, 1, u))
@@ -304,7 +306,9 @@ export function evaluate(t: number, out: Pose): Pose {
 
   if (k === 3) {
     // drop out of warp, dolly zoom, slingshot into orbit
-    const s = 1 - Math.pow(1 - u, 2.3)
+    // leave the rest point from zero speed, cover most of the distance early, settle softly
+    const gu = u * u * (3 - 2 * u)
+    const s = 1 - Math.pow(1 - gu, 1.8)
     capturePoint(s, out.sp)
     bezTan(CAP_A, CAP_B, CAP_C, CAP_E, Math.min(s, 0.999), out.f)
     out.up.copy(slerpDir(UP_D, N_O, smooth(0.2, 0.9, u), _w))

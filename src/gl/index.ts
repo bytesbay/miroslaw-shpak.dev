@@ -231,7 +231,9 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     body.rotation.z = Math.sin(time * 0.6) * 0.03 + pmx * 0.08 * (1 - pose.warp)
     body.rotation.x = -pmy * 0.04
     if (pose.warp > 0) {
-      body.position.set((Math.random() - 0.5) * 0.04 * pose.warp, (Math.random() - 0.5) * 0.04 * pose.warp, 0)
+      // smooth vibration (sum of sines), not per-frame random jitter
+      const a = 0.025 * pose.warp
+      body.position.set(a * (Math.sin(time * 37.0) + 0.5 * Math.sin(time * 61.0)) * 0.6, a * (Math.sin(time * 43.0 + 1.3) + 0.5 * Math.sin(time * 71.0)) * 0.6, 0)
     } else body.position.set(0, 0, 0)
 
     const fl = pose.flame
@@ -257,7 +259,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     camTarget.addScaledVector(right, pmx * dist * 0.035).addScaledVector(camUp, -pmy * dist * 0.025)
     if (pose.warp > 0.02) {
       const s = pose.warp * 0.05
-      camera.position.add(tmp.set((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s))
+      camera.position.add(tmp.set(Math.sin(time * 23.0) + 0.4 * Math.sin(time * 41.0), Math.sin(time * 29.0 + 2.0) + 0.4 * Math.sin(time * 53.0), 0).multiplyScalar(s * 0.35))
     }
     camera.up.copy(camUp)
     camera.lookAt(camTarget)
