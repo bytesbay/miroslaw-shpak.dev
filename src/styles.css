@@ -37,7 +37,7 @@ a { color: inherit; }
 .skip:focus { left: 12px; }
 
 /* ------------------------------------------------------------ backdrop */
-#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; opacity: 0; transition: opacity 1.4s var(--ease); pointer-events: none; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; image-rendering: crisp-edges; image-rendering: pixelated; z-index: 0; opacity: 0; transition: opacity 1.4s var(--ease); pointer-events: none; }
 html.gl-ready #gl { opacity: 1; }
 html.nofx #gl { display: none; }
 

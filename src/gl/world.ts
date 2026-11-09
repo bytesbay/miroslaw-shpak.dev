@@ -96,7 +96,7 @@ export function makePlanetRing(inner: number, outer: number, sun: Vector3) {
         vec3 V = normalize(vW - cameraPosition);
         float fwd = pow(max(dot(V, uSun), 0.0), 4.0);
         vec3 col = mix(vec3(0.75, 0.55, 0.62), vec3(1.0, 0.82, 0.7), r) * (0.55 + fwd * 1.4);
-        gl_FragColor = vec4(col, a * 0.55);
+        gl_FragColor = vec4(col * 0.7, a * 0.5);
       }`,
     transparent: true, depthWrite: false, side: DoubleSide,
   })
@@ -203,7 +203,7 @@ export function makeStars(count: number, radius: number) {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
           float ahead = max(dot(position, uVel), 0.0);
           vC = mix(aColor, vec3(1.0, 0.55, 0.78), 0.35) * (1.0 + ahead);
-          vA = uWarp * (1.0 - aEnd * 0.9);
+          vA = uWarp * (1.0 - aEnd * 0.9) * 0.45;
         }`,
       fragmentShader: /* glsl */ `
         varying vec3 vC; varying float vA;
@@ -245,7 +245,7 @@ export function makeDust(count: number) {
   for (let i = 0; i < count; i++) spawn(i, false)
   const right = new Vector3(), up = new Vector3(), p = new Vector3()
   function update(dt: number, warp: number, cam: Vector3, fwd: Vector3, upHint: Vector3) {
-    mat.uniforms.uA.value = warp * 0.9
+    mat.uniforms.uA.value = warp * 0.4
     lines.visible = warp > 0.01
     if (!lines.visible) return
     right.crossVectors(fwd, upHint).normalize()

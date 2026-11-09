@@ -1,7 +1,7 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, Color, DirectionalLight, AmbientLight, Vector3, Quaternion, Group, Mesh,
   ConeGeometry, ShaderMaterial, AdditiveBlending, AnimationMixer, ACESFilmicToneMapping, SRGBColorSpace,
-  PMREMGenerator, MathUtils, Sprite, Material,
+  PMREMGenerator, MathUtils, Sprite, Material, Vector2, WebGLRenderTarget, HalfFloatType, NearestFilter, OrthographicCamera, PlaneGeometry,
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
@@ -20,12 +20,13 @@ const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()
 
 export async function start(canvas: HTMLCanvasElement, onReady: () => void, onProgress: (p: number) => void = () => {}): Promise<Gl> {
   const weak = matchMedia('(pointer: coarse)').matches || (navigator as any).deviceMemory < 4
-  // pixel budget instead of a fixed ratio: big screens render fewer pixels per CSS pixel
-  const budget = weak ? 1.2e6 : 3.2e6
-  const pixelRatio = () => Math.max(0.75, Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(budget / (innerWidth * innerHeight))))
-  const dprCap = pixelRatio()
-  const renderer = new WebGLRenderer({ canvas, antialias: dprCap < 1.5, powerPreference: 'high-performance', alpha: false, stencil: false })
-  renderer.setPixelRatio(dprCap)
+  // Pixel-art rendering: the scene is drawn at ~300 lines and scaled up with nearest-neighbour
+  // filtering (image-rendering: pixelated). Same look on every device, and a fraction of the GPU cost.
+  const pixelSize = () => Math.min(5, Math.max(2, Math.round(innerHeight / 300)))
+  const pixelRatio = () => 1 / pixelSize()
+  const dprCap = 1
+  const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false })
+  renderer.setPixelRatio(pixelRatio())
   renderer.setSize(innerWidth, innerHeight, false)
   renderer.toneMapping = ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
@@ -34,6 +35,43 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
 
   const scene = new Scene()
   const camera = new PerspectiveCamera(45, innerWidth / innerHeight, 0.4, 60000)
+
+  // HDR target at the low resolution, then one full-screen pass: tone mapping, sRGB,
+  // a limited palette and 4x4 Bayer dithering.
+  const bufSize = new Vector2()
+  renderer.getDrawingBufferSize(bufSize)
+  const target = new WebGLRenderTarget(bufSize.x, bufSize.y, { type: HalfFloatType, minFilter: NearestFilter, magFilter: NearestFilter, depthBuffer: true })
+  const post = new Scene()
+  const postCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
+  const postQuad = new Mesh(new PlaneGeometry(2, 2), new ShaderMaterial({
+    uniforms: { tScene: { value: target.texture }, uLevels: { value: 9 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D tScene; uniform float uLevels; varying vec2 vUv;
+      float bayer(vec2 p){
+        int x=int(mod(p.x,4.0)), y=int(mod(p.y,4.0));
+        int i=x+y*4;
+        float m[16]=float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
+        return m[i]/16.0-0.5;
+      }
+      void main(){
+        gl_FragColor=vec4(texture(tScene,vUv).rgb,1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        vec3 c=gl_FragColor.rgb;
+        c=floor(c*uLevels+0.5+bayer(gl_FragCoord.xy)*0.9)/uLevels;
+        gl_FragColor=vec4(clamp(c,0.0,1.0),1.0);
+      }`,
+    depthTest: false, depthWrite: false,
+  }))
+  postQuad.frustumCulled = false
+  post.add(postQuad)
+  const draw = () => {
+    renderer.setRenderTarget(target)
+    renderer.render(scene, camera)
+    renderer.setRenderTarget(null)
+    renderer.render(post, postCam)
+  }
   configure(innerWidth / innerHeight)
 
   // light
@@ -51,7 +89,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   await nextFrame()
   // sky
   const stars = makeStars(2600, 20000)
-  stars.uniforms.uDpr.value = dprCap
+  stars.uniforms.uDpr.value = 1
   scene.add(stars.group)
   const glowTex = glowTexture()
   const sunGlow = glowSprite(glowTex, '#ffd6a6', 3400)
@@ -65,7 +103,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
 
   // home planet: light global sphere plus a dense patch where the camera starts
   const home = new Group()
-  const SEG_H = weak ? 128 : 256, SEG_D = weak ? 96 : 192
+  const SEG_H = weak ? 128 : 192, SEG_D = weak ? 96 : 144
   const homeMesh = makeDetailedPlanet(renderer, {
     mapW: weak ? 1024 : 2048, radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
     colors: { deep: '#040a1c', shallow: '#123060', low: '#232a2b', mid: '#353240', high: '#4f4655', peak: '#cfcadc', amb: '#221d36', fill: '#4b55c8', sun: '#fff1e4', lights: '#ffb35c' },
@@ -74,13 +112,13 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   homeLo.geometry.boundingSphere!.radius = R_H * 1.05
   homeLo.onBeforeRender = bindRotation
   await nextFrame()
-  const patch = makeHomePatch(renderer, homeMesh, { capDeg: 26, rings: weak ? 110 : 280, sectors: weak ? 240 : 640, mapSize: weak ? 1024 : 2048, seed: [3.1, 7.4, 1.9] })
+  const patch = makeHomePatch(renderer, homeMesh, { capDeg: 26, rings: weak ? 110 : 180, sectors: weak ? 240 : 400, mapSize: weak ? 1024 : 2048, seed: [3.1, 7.4, 1.9] })
   homeMesh.add(patch.mesh)
   const homeU = (homeMesh.material as ShaderMaterial).uniforms
   onProgress(0.3)
   await nextFrame()
   await nextFrame()
-  const homeClouds = makeClouds(renderer, { radius: R_H * 1.027, segs: weak ? 48 : 96, mapW: weak ? 1024 : 2048, sun: SUN, seed: [2.3, 5.1, 8.8], tint: '#f2efff', opacity: 0.82 })
+  const homeClouds = makeClouds(renderer, { radius: R_H * 1.027, segs: weak ? 48 : 96, mapW: weak ? 1024 : 2048, sun: SUN, seed: [2.3, 5.1, 8.8], tint: '#f2efff', opacity: 0.62 })
   home.add(homeClouds)
   home.add(homeMesh, homeLo, makeAtmosphere(R_H, '#6f8dff', SUN, 1.15, new Vector3(0, 0, 0), R_H * 0.009, 0.022))
   scene.add(home)
@@ -182,17 +220,19 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   // so nothing gets compiled or uploaded mid-scroll (that was the stutter at the warp and at the second planet).
   const hidden: { o: { visible: boolean; frustumCulled: boolean }; v: boolean; f: boolean }[] = []
   scene.traverse((o) => { hidden.push({ o, v: o.visible, f: o.frustumCulled }); o.visible = true; o.frustumCulled = false })
+  renderer.setRenderTarget(target)
   try { await renderer.compileAsync(scene, camera) } catch {}
+  renderer.setRenderTarget(null)
   onProgress(0.85)
   const groups = [home, dest]
   for (const g of groups) {
     const others = scene.children.filter((c) => c !== g)
     others.forEach((c) => (c.visible = false))
-    renderer.render(scene, camera)
+    draw()
     others.forEach((c) => (c.visible = true))
     await nextFrame()
   }
-  renderer.render(scene, camera)
+  draw()
   hidden.forEach((h) => { h.o.visible = h.v; h.o.frustumCulled = h.f })
   await nextFrame()
   onProgress(1)
@@ -208,8 +248,6 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   const tmp = new Vector3(), right = new Vector3(), camUp = new Vector3()
   const api: Gl = { warp: 0, frame, resize, quality: () => renderer.getPixelRatio() }
   let first = true
-  let slowFrames = 0, frames = 0, refresh = 1
-  let baseRatio = dprCap
 
   function frame(dt: number, t: number, mx: number, my: number, measure = true) {
     dt = Math.min(dt, 0.05)
@@ -245,8 +283,8 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     flameMat.uniforms.uI.value = Math.min(1.2, 0.25 + fl)
     flameMat.uniforms.uTime.value = time
     flameGlow.position.copy(ENGINE)
-    flameGlow.scale.setScalar(1.2 + fl * 3.5 + pose.warp * 3)
-    flameGlow.material.opacity = 0.15 + fl * 0.6
+    flameGlow.scale.setScalar(1.0 + fl * 2.5 + pose.warp * 1.5)
+    flameGlow.material.opacity = 0.1 + fl * 0.4
     const blink = (time % 1.6) < 0.12 ? 1 : 0.15
     navL.material.opacity = navR.material.opacity = blink
     if (mixer) mixer.setTime(pose.doors * 2.5)
@@ -289,9 +327,9 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     const active = Math.round(tD - CAREER_FIRST)
     beacons.forEach((b, j) => {
       const on = j === active && tD > 3.6 && tD < 10.6
-      const target = (on ? 7 + Math.sin(time * 3) * 1.5 : 9) * (0.4 + careerVis * 0.6)
+      const target = (on ? 5 + Math.sin(time * 3) * 1 : 6) * (0.4 + careerVis * 0.6)
       b.scale.setScalar(MathUtils.lerp(b.scale.x, target, 0.12))
-      b.material.opacity = careerVis * (on ? 0.5 : 0.75)
+      b.material.opacity = careerVis * (on ? 0.3 : 0.5)
       b.material.color.set(on ? '#ff7fb0' : '#ff2a75')
       b.visible = careerVis > 0.01
     })
@@ -309,41 +347,23 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     destMesh.visible = nearD; destLo.visible = !nearD
     ring.rotation.z += dt * 0.002
 
-    renderer.render(scene, camera)
+    draw()
 
     if (first) {
       first = false
       onReady()
     }
-    // Adaptive resolution. Only frames rendered while the scene moves are measured (idle frames are
-    // throttled on purpose), and "slow" is relative to the display refresh, so a 60 Hz Safari is not
-    // mistaken for a slow GPU. Quality also climbs back when there is headroom.
-    if (measure) {
-      refresh = Math.min(refresh * 1.002, dt)            // tracks the display interval
-      frames++
-      if (dt > refresh * 1.7 + 0.002) slowFrames++
-      if (frames >= 120) {
-        const pr = renderer.getPixelRatio()
-        if (slowFrames > 40 && pr > 0.75) setRatio(Math.max(0.75, pr * 0.85))
-        else if (slowFrames < 4 && pr < baseRatio) setRatio(Math.min(baseRatio, pr / 0.85))
-        frames = 0; slowFrames = 0
-      }
-    }
-  }
-
-  function setRatio(r: number) {
-    renderer.setPixelRatio(r)
-    renderer.setSize(innerWidth, innerHeight, false)
-    stars.uniforms.uDpr.value = r
+    void measure
   }
 
   function resize() {
-    baseRatio = pixelRatio()
-    renderer.setPixelRatio(baseRatio)
+    renderer.setPixelRatio(pixelRatio())
     configure(innerWidth / innerHeight)
     camera.aspect = innerWidth / innerHeight
     camera.updateProjectionMatrix()
     renderer.setSize(innerWidth, innerHeight, false)
+    renderer.getDrawingBufferSize(bufSize)
+    target.setSize(bufSize.x, bufSize.y)
   }
 
   return api
