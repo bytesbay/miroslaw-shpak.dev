@@ -47,7 +47,8 @@ export const STACK: { group: string; items: string[] }[] = [
   { group: 'AI', items: ['Claude', 'OpenAI', 'MCP', 'Tool calling', 'Multi-agent orchestration', 'RAG'] },
 ]
 
-export const STACK_NOTE = 'I love making something beautiful with GLSL shaders. The page you are scrolling is one of them.'
+// tags marked with a heart on the site
+export const FAVORITES = ['Rust', 'EVM', 'MongoDB', 'PostgreSQL', 'GLSL', 'Vue / Nuxt', 'Kubernetes']
 
 export const APPROACH = [
   {

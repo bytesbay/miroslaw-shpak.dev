@@ -1,6 +1,6 @@
 // Build-time HTML rendering. Everything a recruiter or crawler needs is plain HTML.
 import {
-  SITE, HERO, STATS, ABOUT, STACK, STACK_NOTE, APPROACH, CAREER, OPEN_SOURCE, AI_STACK,
+  SITE, HERO, STATS, ABOUT, STACK, FAVORITES, APPROACH, CAREER, OPEN_SOURCE, AI_STACK,
   CONTACT, INTERESTS, EDUCATION, LANGUAGES, MOTTO, DOMAINS, CHAPTERS,
 } from './content'
 
@@ -20,6 +20,9 @@ const icon = {
 }
 
 /* ---------------------------------------------------------------- story */
+
+// pixel heart, drawn on a 7x6 grid to match the pixel font and the 3D style
+const HEART = `<svg class="heart" viewBox="0 0 7 6" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"/></svg>`
 
 function stage(id: string, inner: string, cls = '') {
   return `<div class="stage"><div class="panel panel-${id}${cls ? ' ' + cls : ''}">${inner}</div></div>`
@@ -49,13 +52,15 @@ function about() {
 
 function stack() {
   const groups = STACK.map(
-    (g) => `<div class="group"><h3>${esc(g.group)}</h3><ul class="chips">${g.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`,
+    (g) =>
+      `<div class="group"><h3>${esc(g.group)}</h3><ul class="chips">${g.items
+        .map((i) => (FAVORITES.includes(i) ? `<li class="fav">${esc(i)}${HEART}<span class="sr"> (favorite)</span></li>` : `<li>${esc(i)}</li>`))
+        .join('')}</ul></div>`,
   ).join('')
   return stage('stack', `
       <p class="kicker">02 · Stack</p>
       <h2>What I work with</h2>
-      <div class="groups">${groups}</div>
-      <p class="note">${esc(STACK_NOTE)}</p>`)
+      <div class="groups">${groups}</div>`)
 }
 
 function approach() {
