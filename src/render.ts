@@ -117,22 +117,23 @@ function openSource(stars: Stars) {
       <p class="note">${esc(AI_STACK)}</p>`)
 }
 
-function contactLinks() {
+function contactLinks(stars: Stars) {
+  const followers = stars['followers:bytesbay'] ?? 38
   return `<ul class="contacts">
         <li><a href="mailto:${SITE.email}">${icon.mail}<span>${SITE.email}</span></a></li>
         <li>${`<a href="${SITE.links.linkedin}" target="_blank" rel="noopener me">${icon.linkedin}<span>LinkedIn</span></a>`}</li>
-        <li>${`<a href="${SITE.links.github}" target="_blank" rel="noopener me">${icon.github}<span>GitHub</span></a>`}</li>
+        <li>${`<a href="${SITE.links.github}" target="_blank" rel="noopener me">${icon.github}<span>GitHub</span><span class="gh-count" data-gh-followers="bytesbay" aria-label="${followers} followers">${followers} followers</span></a>`}</li>
         <li>${`<a href="${SITE.links.telegram}" target="_blank" rel="noopener me">${icon.telegram}<span>Telegram</span></a>`}</li>
       </ul>`
 }
 
-function contact() {
+function contact(stars: Stars) {
   return stage('contact', `
       <p class="kicker">06 · Contact</p>
       <h2>Let's build something</h2>
       <p class="lead">${esc(CONTACT.lead)}</p>
       <p>${esc(CONTACT.details)}</p>
-      ${contactLinks()}
+      ${contactLinks(stars)}
       <p class="cta" data-cv><a class="btn" href="/cv/">Full CV, printable</a></p>`)
 }
 
@@ -143,7 +144,7 @@ const LENS: Record<string, number> = {
 export function renderStory(stars: Stars) {
   const parts: Record<string, string> = {
     hello: hero(), about: about(), stack: stack(), approach: approach(),
-    career: career(), 'open-source': openSource(stars), contact: contact(),
+    career: career(), 'open-source': openSource(stars), contact: contact(stars),
   }
   return CHAPTERS.map(
     (c) => `<section id="${c.id}" class="ch ch-${c.id}" data-len="${LENS[c.id]}" style="--len:${LENS[c.id]}" data-label="${esc(c.label)}" aria-label="${esc(c.label)}">${parts[c.id]}</section>`,

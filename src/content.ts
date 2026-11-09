@@ -44,11 +44,11 @@ export const STACK: { group: string; items: string[] }[] = [
   { group: 'Web3', items: ['EVM', 'Foundry', 'viem / wagmi', 'ERC-4337', 'Chainlink', 'Solana', 'BRC-20 / Ordinals', 'TON'] },
   { group: 'Frontend & 3D', items: ['React / Next.js', 'Vue / Nuxt', 'Three.js', 'GLSL', 'Unity', 'Unreal Engine'] },
   { group: 'Infrastructure', items: ['Kubernetes', 'Helm', 'werf', 'ArgoCD', 'Docker', 'GitHub Actions', 'AWS', 'GCP'] },
-  { group: 'AI', items: ['Claude', 'OpenAI', 'MCP', 'Tool calling', 'Multi-agent orchestration', 'RAG'] },
+  { group: 'AI', items: ['PI', 'Claude', 'OpenAI', 'MCP', 'Tool calling', 'Multi-agent orchestration', 'RAG'] },
 ]
 
 // tags marked with a heart on the site
-export const FAVORITES = ['Rust', 'EVM', 'MongoDB', 'PostgreSQL', 'GLSL', 'Vue / Nuxt', 'Kubernetes']
+export const FAVORITES = ['Rust', 'EVM', 'MongoDB', 'PostgreSQL', 'GLSL', 'Vue / Nuxt', 'Kubernetes', 'PI']
 
 export const APPROACH = [
   {

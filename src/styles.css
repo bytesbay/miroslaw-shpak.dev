@@ -168,6 +168,7 @@ p { margin: 0 0 14px; color: #ddd8e8; }
 .contacts a { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); text-decoration: none; font-weight: 600; transition: border-color 0.25s, transform 0.25s var(--ease); }
 .contacts a:hover { border-color: #ff2a7599; transform: translateY(-2px); }
 .contacts svg { width: 18px; height: 18px; color: var(--accent); }
+.gh-count { font: 400 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-2); padding: 4px 7px; border-radius: 999px; background: rgba(255, 181, 71, 0.1); border: 1px solid rgba(255, 181, 71, 0.25); }
 
 .foot { position: relative; z-index: 2; padding: 40px clamp(20px, 6vw, 96px) 60px; color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
 .foot p { margin: 0; color: #b4aec4; }
@@ -204,7 +205,7 @@ html.fx .ch-approach .panel::before { inset: -30% -10% -20%; }
 html.fx .ch-open-source .stage { justify-content: flex-end; }
 html.fx .ch-open-source .panel { max-width: 520px; }
 html.fx .ch-contact .stage { justify-content: center; text-align: center; align-items: flex-start; padding-top: 16vh; }
-html.fx .ch-contact .panel { max-width: 760px; }
+html.fx .ch-contact .panel { max-width: 880px; }
 html.fx .ch-contact .contacts, html.fx .ch-contact .cta { justify-content: center; }
 html.fx .ch-contact .lead { margin-left: auto; margin-right: auto; }
 

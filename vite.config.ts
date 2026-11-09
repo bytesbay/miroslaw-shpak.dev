@@ -16,6 +16,15 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 // Live GitHub star counts at build time, falling back to the numbers in content.ts.
 async function fetchStars(): Promise<Stars> {
   const out: Stars = {}
+  try {
+    const headers: Record<string, string> = { 'user-agent': 'miroslaw-shpak.dev' }
+    if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`
+    const r = await fetch('https://api.github.com/users/bytesbay', { signal: AbortSignal.timeout(4000), headers })
+    if (r.ok) {
+      const j = (await r.json()) as { followers?: number }
+      if (typeof j.followers === 'number') out['followers:bytesbay'] = j.followers
+    }
+  } catch {}
   await Promise.all(
     OPEN_SOURCE.map(async (p) => {
       try {

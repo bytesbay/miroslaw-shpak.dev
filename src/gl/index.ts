@@ -1,7 +1,7 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, Color, DirectionalLight, AmbientLight, Vector3, Quaternion, Group, Mesh,
   ConeGeometry, ShaderMaterial, AdditiveBlending, AnimationMixer, ACESFilmicToneMapping, SRGBColorSpace,
-  PMREMGenerator, MathUtils, Sprite, Material, MeshStandardMaterial, SphereGeometry, BackSide, PCFSoftShadowMap, Vector2, WebGLRenderTarget, HalfFloatType, NearestFilter, OrthographicCamera, PlaneGeometry,
+  PMREMGenerator, MathUtils, Sprite, Material, MeshStandardMaterial, PointLight, SphereGeometry, BackSide, PCFSoftShadowMap, Vector2, WebGLRenderTarget, HalfFloatType, NearestFilter, OrthographicCamera, PlaneGeometry,
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
@@ -90,9 +90,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     fragmentShader: /* glsl */ `
       uniform vec3 uSun; varying vec3 vD;
       void main(){
-        float below = smoothstep(0.1, -0.6, vD.y);
-        float above = smoothstep(-0.2, 0.9, vD.y);
-        vec3 c = vec3(0.06, 0.06, 0.08) * above + vec3(0.18, 0.22, 0.42) * below + vec3(0.03);
+        vec3 c = vec3(0.09, 0.09, 0.11);
         float s = max(dot(vD, uSun), 0.0);
         c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 60.0 + pow(s, 12.0) * 0.35);
         gl_FragColor = vec4(c, 1.0);
@@ -214,6 +212,30 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
 
   // Engine position in shuttle space. The model's nose points along +Z.
   const ENGINE = new Vector3(0, 0.36, -1.85)
+
+  // The engines are a light source: they light the tail, the engine bells and the open cargo doors.
+  const engineLight = new PointLight('#ff5aa0', 0, 9, 2)
+  engineLight.position.set(0, 0.4, -2.6)
+  shuttle.add(engineLight)
+
+  // Planetshine: sunlight reflected by each planet, coming from the planet's direction in its colour.
+  // Strength follows how much of the sunlit side faces the shuttle and how large the planet looks.
+  const shineHome = new DirectionalLight('#5f86ff', 0)
+  const shineDest = new DirectionalLight('#e07592', 0)
+  scene.add(shineHome, shineHome.target, shineDest, shineDest.target)
+  const _sd = new Vector3(), _sn = new Vector3()
+  const planetshine = (light: DirectionalLight, center: Vector3, radius: number, albedo: number) => {
+    _sd.subVectors(center, shuttle.position)
+    const dist = Math.max(_sd.length(), radius * 1.001)
+    _sd.divideScalar(dist)
+    _sn.copy(_sd).negate()                                   // planet surface normal facing the shuttle
+    const phase = 0.5 * (1 + _sn.dot(SUN))                   // lit fraction seen from the shuttle
+    const size = Math.min(1, (radius / dist) ** 2 * 1.4)     // apparent size (solid angle)
+    light.intensity = 3.1 * albedo * phase * size
+    light.target.position.copy(shuttle.position)
+    light.position.copy(shuttle.position).addScaledVector(_sd, 10)
+  }
+  const ORIGIN = new Vector3()
   navL.position.set(1.08, 0.12, -0.9)
   navR.position.set(-1.08, 0.12, -0.9)
 
@@ -320,6 +342,9 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     flameGlow.position.copy(ENGINE)
     flameGlow.scale.setScalar(1.0 + fl * 2.5 + pose.warp * 1.5)
     flameGlow.material.opacity = 0.1 + fl * 0.4
+    engineLight.intensity = (0.5 + fl * 2.4 + pose.warp * 1.2) * 9 * (0.88 + 0.12 * Math.sin(time * 38) * Math.sin(time * 23))
+    planetshine(shineHome, ORIGIN, R_H, 0.32)
+    planetshine(shineDest, C_D, R_D, 0.38)
     const blink = (time % 1.6) < 0.12 ? 1 : 0.15
     navL.material.opacity = navR.material.opacity = blink
     if (mixer) mixer.setTime(pose.doors * 2.5)

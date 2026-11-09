@@ -467,8 +467,28 @@ function refreshStars() {
     }
   })
 }
+// Live GitHub follower count on the contact button, same idea as the stars.
+async function refreshFollowers() {
+  const el = document.querySelector<HTMLElement>('[data-gh-followers]')
+  if (!el) return
+  const user = el.dataset.ghFollowers!
+  const key = 'followers:' + user
+  let n = Number(sessionStorage.getItem(key) || 0)
+  if (!n) {
+    try {
+      const r = await fetch(`https://api.github.com/users/${user}`, { headers: { accept: 'application/vnd.github+json' } })
+      if (r.ok) n = ((await r.json()) as { followers?: number }).followers || 0
+      if (n) sessionStorage.setItem(key, String(n))
+    } catch {}
+  }
+  if (n) {
+    el.textContent = `${n} followers`
+    el.setAttribute('aria-label', `${n} followers`)
+  }
+}
+
 const idle = (fn: () => void) => ('requestIdleCallback' in window ? (window as any).requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 1500))
-addEventListener('load', () => idle(refreshStars), { once: true })
+addEventListener('load', () => idle(() => { refreshStars(); refreshFollowers() }), { once: true })
 
 document.fonts?.ready.then(init, init) ?? init()
 void lastV
