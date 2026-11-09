@@ -179,7 +179,7 @@ function base(i: number, sp: Vector3, f: Vector3, co: Vector3, fov: number, flam
   return p
 }
 
-const SP0 = new Vector3(0, R_H + 34, 0)
+const SP0 = new Vector3(0, R_H + 42, 0)
 const SP1 = new Vector3(0, R_H + 150, -150)
 const SP2 = new Vector3(0, R_H + 300, -520)
 const F2 = new Vector3(0, 0.06, -1).normalize().applyQuaternion(new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), SP2.clone().normalize()))

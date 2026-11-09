@@ -1,58 +1,8 @@
 import {
-  IcosahedronGeometry, BufferGeometry, Float32BufferAttribute, Mesh, MeshLambertMaterial, ShaderMaterial, Color, Vector3,
+  IcosahedronGeometry, BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial, Color, Vector3,
   BackSide, FrontSide, AdditiveBlending, Points, LineSegments, Line, Group, RingGeometry, DoubleSide, CanvasTexture,
   Sprite, SpriteMaterial, SRGBColorSpace, Object3D,
 } from 'three'
-
-/* ---------------------------------------------------------------- noise */
-function hash(x: number, y: number, z: number, seed: number) {
-  let h = (x * 374761393 + y * 668265263 + z * 2147483647 + seed * 144665) | 0
-  h = Math.imul(h ^ (h >>> 13), 1274126177)
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295
-}
-function vnoise(x: number, y: number, z: number, seed: number) {
-  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z)
-  const xf = x - xi, yf = y - yi, zf = z - zi
-  const s = (t: number) => t * t * (3 - 2 * t)
-  const u = s(xf), v = s(yf), w = s(zf)
-  const l = (a: number, b: number, t: number) => a + (b - a) * t
-  const c = (dx: number, dy: number, dz: number) => hash(xi + dx, yi + dy, zi + dz, seed)
-  return l(
-    l(l(c(0, 0, 0), c(1, 0, 0), u), l(c(0, 1, 0), c(1, 1, 0), u), v),
-    l(l(c(0, 0, 1), c(1, 0, 1), u), l(c(0, 1, 1), c(1, 1, 1), u), v),
-    w,
-  )
-}
-const fbm = (x: number, y: number, z: number, seed: number) =>
-  vnoise(x, y, z, seed) * 0.55 + vnoise(x * 2.1, y * 2.1, z * 2.1, seed + 7) * 0.3 + vnoise(x * 4.3, y * 4.3, z * 4.3, seed + 13) * 0.15
-
-/* ---------------------------------------------------------------- planets */
-export function makePlanet(o: { radius: number; detail: number; seed: number; amp: number; freq: number; a: string; b: string; c: string }) {
-  const g = new IcosahedronGeometry(1, o.detail)
-  const pos = g.getAttribute('position')
-  const colors = new Float32Array(pos.count * 3)
-  const ca = new Color(o.a), cb = new Color(o.b), cc = new Color(o.c), tmp = new Color()
-  const v = new Vector3()
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i).normalize()
-    const n = fbm(v.x * o.freq + 11, v.y * o.freq + 3, v.z * o.freq + 5, o.seed)
-    v.multiplyScalar(o.radius * (1 + (n - 0.5) * o.amp))
-    pos.setXYZ(i, v.x, v.y, v.z)
-  }
-  // flat colour per face
-  for (let i = 0; i < pos.count; i += 3) {
-    v.fromBufferAttribute(pos, i).normalize()
-    const n = fbm(v.x * 2.2, v.y * 2.2, v.z * 2.2, o.seed + 99)
-    const r = hash(i, 1, 2, o.seed)
-    tmp.copy(ca).lerp(cb, Math.min(1, Math.max(0, n * 1.6 - 0.3)))
-    if (r > 0.97) tmp.lerp(cc, 0.4)
-    tmp.multiplyScalar(0.86 + r * 0.22)
-    for (let k = 0; k < 3; k++) tmp.toArray(colors, (i + k) * 3)
-  }
-  g.setAttribute('color', new Float32BufferAttribute(colors, 3))
-  g.computeVertexNormals()
-  return new Mesh(g, new MeshLambertMaterial({ vertexColors: true, flatShading: true }))
-}
 
 const atmoVert = /* glsl */ `
   varying vec3 vNw; varying vec3 vW; varying vec3 vNv;

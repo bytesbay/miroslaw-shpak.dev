@@ -9,7 +9,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import {
   evaluate, newPose, orient, configure, R_H, C_D, R_D, SUN, N_O, ringPoint, thetaOf, capturePoint, CAREER_FIRST, CAREER_COUNT, smooth, THETA0,
 } from './timeline'
-import { makePlanet, makeAtmosphere, makePlanetRing, makeStars, makeDust, makeOrbit, makeTrail, glowTexture, glowSprite } from './world'
+import { makeAtmosphere, makePlanetRing, makeStars, makeDust, makeOrbit, makeTrail, glowTexture, glowSprite } from './world'
+import { makeDetailedPlanet, sphereCube, bindRotation } from './planet'
 
 export type Gl = { frame(dt: number, t: number, mx: number, my: number): void; resize(): void; warp: number }
 
@@ -54,17 +55,32 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
 
   // home planet
   const home = new Group()
-  const homeMesh = makePlanet({ radius: R_H, detail: 5, seed: 3, amp: 0.03, freq: 3.4, a: '#2e3344', b: '#4f566e', c: '#7d6f9c' })
-  home.add(homeMesh, makeAtmosphere(R_H, '#6f8dff', SUN, 1.1, new Vector3(0, 0, 0)))
+  // Detail scales with the device. Desktop: ~1.9M + ~0.5M triangles, ~100x the old low-poly planets.
+  const weak = matchMedia('(pointer: coarse)').matches || (navigator as any).deviceMemory < 4
+  const SEG_H = weak ? 150 : 400, SEG_D = weak ? 90 : 200
+  const homeMesh = makeDetailedPlanet({
+    radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
+    colors: { deep: '#070d22', shallow: '#18305e', low: '#353646', mid: '#45435a', high: '#5a5370', peak: '#c9c4dc', amb: '#221d36', fill: '#4b55c8', sun: '#fff1e4', lights: '#ffb35c' },
+  })
+  const homeLo = new Mesh(sphereCube(48), homeMesh.material)
+  homeLo.geometry.boundingSphere!.radius = R_H * 1.05
+  homeLo.onBeforeRender = bindRotation
+  home.add(homeMesh, homeLo, makeAtmosphere(R_H, '#6f8dff', SUN, 1.1, new Vector3(0, 0, 0)))
   scene.add(home)
 
   // destination planet with rings
   const dest = new Group()
   dest.position.copy(C_D)
-  const destMesh = makePlanet({ radius: R_D, detail: 4, seed: 11, amp: 0.06, freq: 2.6, a: '#241628', b: '#52304a', c: '#b07a70' })
+  const destMesh = makeDetailedPlanet({
+    radius: R_D, kind: 1, segs: SEG_D, amp: 0.045, seed: [11.3, 2.2, 5.6], sun: SUN,
+    colors: { deep: '#000000', shallow: '#000000', low: '#1e0f1d', mid: '#4a2440', high: '#87485c', peak: '#d79a86', amb: '#2a1426', fill: '#7a3bb0', sun: '#fff1e4', lights: '#000000' },
+  })
+  const destLo = new Mesh(sphereCube(40), destMesh.material)
+  destLo.geometry.boundingSphere!.radius = R_D * 1.1
+  destLo.onBeforeRender = bindRotation
   const ring = makePlanetRing(R_D * 1.38, R_D * 2.1, SUN)
   ring.lookAt(new Vector3(-0.12, 1, 0.3))
-  dest.add(destMesh, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.55, C_D), ring)
+  dest.add(destMesh, destLo, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.55, C_D), ring)
   scene.add(dest)
 
   // career orbit, beacons, capture trail
@@ -230,9 +246,15 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
       b.visible = careerVis > 0.01
     })
 
-    // planets drift
+    // planets drift; far planets use the light mesh
     homeMesh.rotation.y += dt * 0.004
     destMesh.rotation.y += dt * 0.006
+    homeLo.rotation.copy(homeMesh.rotation)
+    destLo.rotation.copy(destMesh.rotation)
+    const nearH = R_H / Math.max(1, camera.position.length()) > 0.12
+    homeMesh.visible = nearH; homeLo.visible = !nearH
+    const nearD = R_D / Math.max(1, camera.position.distanceTo(C_D)) > 0.06
+    destMesh.visible = nearD; destLo.visible = !nearD
     ring.rotation.z += dt * 0.002
 
     renderer.render(scene, camera)
