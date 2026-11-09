@@ -108,7 +108,7 @@ function career() {
 function openSource(stars: Stars) {
   const items = OPEN_SOURCE.map((p) => {
     const n = stars[p.repo] ?? p.stars
-    return `<li><a href="${p.href}" target="_blank" rel="noopener"><span class="os-name">${esc(p.name)}</span><span class="os-stars" aria-label="${n} GitHub stars">★ ${n}</span><span class="os-text">${esc(p.text)}</span></a></li>`
+    return `<li><a href="${p.href}" target="_blank" rel="noopener"><span class="os-name">${esc(p.name)}</span><span class="os-stars" data-repo="${p.repo}" aria-label="${n} GitHub stars">★ ${n}</span><span class="os-text">${esc(p.text)}</span></a></li>`
   }).join('')
   return stage('open-source', `
       <p class="kicker">05 · Open source</p>

@@ -446,5 +446,29 @@ function init() {
   }
 }
 
+// Live GitHub star counts: the numbers baked into the HTML are refreshed once per session.
+function refreshStars() {
+  const els = Array.from(document.querySelectorAll<HTMLElement>('.os-stars[data-repo]'))
+  els.forEach(async (el) => {
+    const repo = el.dataset.repo!
+    const key = 'stars:' + repo
+    let n = Number(sessionStorage.getItem(key) || 0)
+    if (!n) {
+      try {
+        const r = await fetch(`https://api.github.com/repos/${repo}`, { headers: { accept: 'application/vnd.github+json' } })
+        if (r.ok) n = ((await r.json()) as { stargazers_count?: number }).stargazers_count || 0
+        if (n) sessionStorage.setItem(key, String(n))
+      } catch {}
+    }
+    const shown = Number((el.textContent || '').replace(/\D/g, ''))
+    if (n > shown) {
+      el.textContent = `★ ${n}`
+      el.setAttribute('aria-label', `${n} GitHub stars`)
+    }
+  })
+}
+const idle = (fn: () => void) => ('requestIdleCallback' in window ? (window as any).requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 1500))
+addEventListener('load', () => idle(refreshStars), { once: true })
+
 document.fonts?.ready.then(init, init) ?? init()
 void lastV
