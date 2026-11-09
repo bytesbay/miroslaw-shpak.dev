@@ -12,7 +12,7 @@ import {
 import { makeAtmosphere, makePlanetRing, makeStars, makeDust, makeOrbit, makeTrail, glowTexture, glowSprite } from './world'
 import { makeDetailedPlanet, sphereCube, bindRotation, makeClouds, makeHomePatch } from './planet'
 
-export type Gl = { frame(dt: number, t: number, mx: number, my: number): void; resize(): void; warp: number }
+export type Gl = { frame(dt: number, t: number, mx: number, my: number, measure?: boolean): void; resize(): void; warp: number; quality: () => number }
 
 const SHUTTLE_SCALE = 12
 
@@ -21,7 +21,7 @@ const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()
 export async function start(canvas: HTMLCanvasElement, onReady: () => void, onProgress: (p: number) => void = () => {}): Promise<Gl> {
   const weak = matchMedia('(pointer: coarse)').matches || (navigator as any).deviceMemory < 4
   // pixel budget instead of a fixed ratio: big screens render fewer pixels per CSS pixel
-  const budget = weak ? 1.1e6 : 2.4e6
+  const budget = weak ? 1.2e6 : 3.2e6
   const pixelRatio = () => Math.max(0.75, Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(budget / (innerWidth * innerHeight))))
   const dprCap = pixelRatio()
   const renderer = new WebGLRenderer({ canvas, antialias: dprCap < 1.5, powerPreference: 'high-performance', alpha: false, stencil: false })
@@ -206,11 +206,12 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   let pmx = 0, pmy = 0
   const camTarget = new Vector3()
   const tmp = new Vector3(), right = new Vector3(), camUp = new Vector3()
-  const api: Gl = { warp: 0, frame, resize }
+  const api: Gl = { warp: 0, frame, resize, quality: () => renderer.getPixelRatio() }
   let first = true
-  let slowFrames = 0, frames = 0
+  let slowFrames = 0, frames = 0, refresh = 1
+  let baseRatio = dprCap
 
-  function frame(dt: number, t: number, mx: number, my: number) {
+  function frame(dt: number, t: number, mx: number, my: number, measure = true) {
     dt = Math.min(dt, 0.05)
     time += dt
     // Second smoothing stage on top of the smoothed scroll. Same idea as the Shuttle site (0.05 per frame).
@@ -314,20 +315,31 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
       first = false
       onReady()
     }
-    // adaptive resolution: if most frames in a window miss ~45 fps, render fewer pixels
-    frames++
-    if (dt > 0.022) slowFrames++
-    if (frames >= 90) {
-      if (slowFrames > 45 && renderer.getPixelRatio() > 0.6) {
-        renderer.setPixelRatio(Math.max(0.6, renderer.getPixelRatio() * 0.8))
-        renderer.setSize(innerWidth, innerHeight, false)
+    // Adaptive resolution. Only frames rendered while the scene moves are measured (idle frames are
+    // throttled on purpose), and "slow" is relative to the display refresh, so a 60 Hz Safari is not
+    // mistaken for a slow GPU. Quality also climbs back when there is headroom.
+    if (measure) {
+      refresh = Math.min(refresh * 1.002, dt)            // tracks the display interval
+      frames++
+      if (dt > refresh * 1.7 + 0.002) slowFrames++
+      if (frames >= 120) {
+        const pr = renderer.getPixelRatio()
+        if (slowFrames > 40 && pr > 0.75) setRatio(Math.max(0.75, pr * 0.85))
+        else if (slowFrames < 4 && pr < baseRatio) setRatio(Math.min(baseRatio, pr / 0.85))
+        frames = 0; slowFrames = 0
       }
-      frames = 0; slowFrames = 0
     }
   }
 
+  function setRatio(r: number) {
+    renderer.setPixelRatio(r)
+    renderer.setSize(innerWidth, innerHeight, false)
+    stars.uniforms.uDpr.value = r
+  }
+
   function resize() {
-    renderer.setPixelRatio(pixelRatio())
+    baseRatio = pixelRatio()
+    renderer.setPixelRatio(baseRatio)
     configure(innerWidth / innerHeight)
     camera.aspect = innerWidth / innerHeight
     camera.updateProjectionMatrix()

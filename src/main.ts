@@ -419,7 +419,9 @@ function init() {
     lastT = t; lastMx = mx; lastMy = my
     glDt += dt
     skip = t0 - idleSince > 1500 ? !skip : false
-    if (gl && !skip) { gl.frame(glDt, t, mx, my); glDt = 0 }
+    const idle = t0 - idleSince > 1500
+    if (gl && !skip) { gl.frame(glDt, t, mx, my, !idle); glDt = 0 }
+    ;(window as any).__q = gl?.quality()
     if (FX) requestAnimationFrame(loop)
   }
   requestAnimationFrame(loop)
