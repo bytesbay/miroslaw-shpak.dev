@@ -1,73 +1,76 @@
 import {
-  IcosahedronGeometry, BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial, Color, Vector3,
-  BackSide, FrontSide, AdditiveBlending, Points, LineSegments, Line, Group, RingGeometry, DoubleSide, CanvasTexture,
+  BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial, Color, Vector3,
+  AdditiveBlending, Points, LineSegments, Line, Group, RingGeometry, DoubleSide, CanvasTexture,
   Sprite, SpriteMaterial, SRGBColorSpace, Object3D,
 } from 'three'
+import { sphereCube } from './planet'
 
-const atmoVert = /* glsl */ `
-  varying vec3 vNw; varying vec3 vW; varying vec3 vNv;
-  void main() {
-    vNw = normalize(mat3(modelMatrix) * normal);
-    vNv = normalize(normalMatrix * normal);
-    vec4 w = modelMatrix * vec4(position, 1.0);
-    vW = w.xyz;
-    gl_Position = projectionMatrix * viewMatrix * w;
-  }`
-
-export function makeAtmosphere(radius: number, color: string, sun: Vector3, strength: number, center: Vector3) {
-  const g = new Group()
-  const uniforms = { uColor: { value: new Color(color) }, uSun: { value: sun }, uK: { value: strength }, uC: { value: center }, uR: { value: radius } }
-  const halo = new Mesh(
-    new IcosahedronGeometry(radius * 1.13, 5),
-    new ShaderMaterial({
-      uniforms,
-      vertexShader: atmoVert,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uColor; uniform vec3 uSun; uniform float uK;
-        varying vec3 vNw; varying vec3 vW; varying vec3 vNv;
-        void main() {
-          float z = clamp(0.74 + vNv.z, 0.0, 1.0);
-          float outer = pow(z, 4.2);
-          float inner = pow(z, 14.0);                       // thin bright limb right at the surface
-          vec3 V = normalize(vW - cameraPosition);
-          float sd = dot(vNw, uSun);
-          float lit = smoothstep(-0.35, 0.55, sd);
-          float sunset = exp(-pow((sd + 0.04) * 4.5, 2.0)); // warm band along the terminator
-          float fwd = pow(max(dot(V, uSun), 0.0), 6.0) * 1.6;
-          vec3 deep = uColor * vec3(0.55, 0.6, 1.0);
-          vec3 col = mix(deep, uColor, smoothstep(0.0, 1.0, inner * 2.0));
-          col = mix(col, vec3(1.0, 0.5, 0.38), sunset * 0.75);
-          col = mix(col, vec3(1.0), inner * lit * 0.35);
-          float k = outer * (lit + fwd + 0.05) + inner * (lit * 0.9 + sunset * 0.8 + fwd * 0.6);
-          gl_FragColor = vec4(col * k * uK, 1.0);
-        }`,
-      side: BackSide, blending: AdditiveBlending, transparent: true, depthWrite: false,
-    }),
-  )
-  const rim = new Mesh(
-    new IcosahedronGeometry(radius * 1.012, 5),
-    new ShaderMaterial({
-      uniforms,
-      vertexShader: atmoVert,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uColor; uniform vec3 uSun; uniform float uK; uniform vec3 uC; uniform float uR;
-        varying vec3 vNw; varying vec3 vW; varying vec3 vNv;
-        void main() {
-          vec3 V = normalize(cameraPosition - vW);
-          float alt = length(cameraPosition - uC) - uR;
-          float f = pow(1.0 - max(dot(vNw, V), 0.0), 3.0) * smoothstep(uR * 0.08, uR * 0.9, alt);
-          float sd = dot(vNw, uSun);
-          float lit = smoothstep(-0.2, 0.6, sd);
-          float sunset = exp(-pow((sd + 0.02) * 5.0, 2.0));
-          float fwd = pow(max(dot(-V, uSun), 0.0), 8.0);
-          vec3 col = mix(uColor, vec3(1.0, 0.52, 0.4), sunset * 0.7);
-          gl_FragColor = vec4(col * f * (lit * 0.9 + fwd * 1.2 + sunset * 0.5) * uK, 1.0);
-        }`,
-      side: FrontSide, blending: AdditiveBlending, transparent: true, depthWrite: false,
-    }),
-  )
-  g.add(halo, rim)
-  return g
+/*
+  Atmosphere, evaluated per pixel. For every view ray the shader finds the segment inside the
+  atmosphere shell, its lowest point and an approximate optical depth (exponential density with
+  scale height H). Nothing depends on mesh normals, so the glow has no facets, and a small H keeps
+  the layer thin: a bright line at the limb, soft haze at grazing angles, warm band at the terminator.
+*/
+export function makeAtmosphere(radius: number, color: string, sun: Vector3, strength: number, center: Vector3, scaleHeight: number, terrain: number) {
+  const top = radius * (1 + terrain) + scaleHeight * 7
+  const mat = new ShaderMaterial({
+    uniforms: {
+      uColor: { value: new Color(color) }, uSun: { value: sun }, uK: { value: strength }, uC: { value: center },
+      uR: { value: radius }, uH: { value: scaleHeight }, uTop: { value: top },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vW;
+      void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor, uSun, uC; uniform float uR, uH, uTop, uK;
+      varying vec3 vW;
+      void main() {
+        vec3 rd = normalize(vW - cameraPosition);
+        vec3 oc = cameraPosition - uC;
+        float b = dot(oc, rd);
+        float c0 = dot(oc, oc);
+        bool outside = c0 > uTop * uTop;
+        if (outside && !gl_FrontFacing) discard;
+        float dA = b * b - (c0 - uTop * uTop);
+        if (dA <= 0.0) discard;
+        float sA = sqrt(dA);
+        float t0 = outside ? -b - sA : 0.0;
+        float t1 = -b + sA;
+        float dP = b * b - (c0 - uR * uR);
+        bool hit = dP > 0.0 && (-b - sqrt(dP)) > 0.0;
+        float tau; vec3 P;
+        float Lg = sqrt(6.2832 * uR * uH);           // optical length of a grazing ray
+        if (hit) {
+          float tHit = -b - sqrt(dP);
+          vec3 n = normalize(oc + rd * tHit);
+          float mu = max(dot(-rd, n), 0.03);
+          tau = min(uH / mu, Lg * 1.4);              // Chapman-style slant path
+          P = oc + rd * mix(t0, tHit, 0.7);
+        } else {
+          float tc = clamp(-b, t0, t1);
+          P = oc + rd * tc;
+          float h = max(length(P) - uR, 0.0);
+          tau = exp(-h / uH) * min(t1 - t0, Lg);
+        }
+        float glow = 1.0 - exp(-tau / (Lg * 0.38));
+        vec3 n = normalize(P);
+        float sd = dot(n, uSun);
+        float lit = smoothstep(-0.28, 0.45, sd);
+        float sunset = exp(-pow((sd + 0.03) * 5.0, 2.0));
+        float fwd = pow(max(dot(rd, uSun), 0.0), 8.0);
+        vec3 col = mix(uColor * vec3(0.5, 0.6, 1.0), uColor, glow);
+        col = mix(col, vec3(1.0, 0.5, 0.36), sunset * 0.7);
+        col = mix(col, vec3(1.0), glow * glow * glow * lit * 0.35);
+        float k = glow * (lit + sunset * 0.55 + fwd * 1.3 + 0.02);
+        gl_FragColor = vec4(col * k * uK, 1.0);
+      }`,
+    side: DoubleSide, blending: AdditiveBlending, transparent: true, depthWrite: false,
+  })
+  const m = new Mesh(sphereCube(72), mat)
+  m.scale.setScalar(top)
+  m.geometry.boundingSphere!.radius = 1.01
+  m.renderOrder = 3
+  return m
 }
 
 export function makePlanetRing(inner: number, outer: number, sun: Vector3) {

@@ -5,9 +5,9 @@ export const SITE = {
   url: 'https://miroslaw-shpak.dev',
   name: 'Miroslaw Shpak',
   alternateNames: ['Mirosław Shpak', 'Myroslav Shpak', 'Мирослав Шпак', 'bytesbay'],
-  title: 'Miroslaw Shpak | Hands-on CTO, Web3 & AI Agents Engineer',
+  title: 'Miroslaw Shpak | Hands-on CTO & Product Engineer',
   description:
-    'Miroslaw Shpak, hands-on CTO and software engineer in Wrocław, Poland. 11 years shipping Web3, onchain betting and AI agent products with TypeScript, Solidity and Rust.',
+    'Miroslaw Shpak, hands-on CTO and product engineer based in Wrocław, Poland. 11 years in software development, with experience building DeFi, betting and AI products.',
   jobTitle: 'CTO & Co-founder, Software Engineer',
   location: { city: 'Wrocław', country: 'PL', countryName: 'Poland' },
   email: 'bytesbay@icloud.com',
@@ -24,19 +24,19 @@ export const SITE = {
 export const HERO = {
   eyebrow: 'CTO · Product engineer · Wrocław, Poland',
   lead:
-    'I take products from the first idea to production: smart contracts, backends, infrastructure and the teams behind them. These days that means onchain betting and AI agents running in production.',
+    'I build products from scratch. I design the architecture, write code and lead the team.',
 }
 
 export const STATS = [
   { value: '11', unit: 'years', label: 'in commercial software, coding since 15' },
   { value: '$13.75M', unit: '', label: 'raised by projects I helped build' },
   { value: '$30M', unit: '', label: 'peak TVL of a DeFi protocol I designed and built' },
-  { value: '2', unit: 'acquired', label: 'companies I helped build, one successful exit' },
+  { value: '2', unit: 'acquisitions', label: 'companies I helped build, including one successful exit' },
   { value: '20', unit: 'people', label: 'largest team I have led' },
 ]
 
 export const ABOUT =
-  'Hands-on CTO with 11 years of commercial development. I lead teams and still write a lot of the code myself. Most of my work joins onchain and offchain systems: contracts, indexers, relayers, backends and the apps around them. I also care how things look, so design and branding usually end up on my desk too.'
+  'Some projects started with my own idea; on others, I led the technical side. I have a good eye for design and branding, and contribute to both. I lead teams and remain hands-on in development.'
 
 export const STACK: { group: string; items: string[] }[] = [
   { group: 'Languages', items: ['TypeScript', 'Solidity', 'Rust', 'C/C++ from the good old days'] },
@@ -51,16 +51,16 @@ export const STACK_NOTE = 'I love making something beautiful with GLSL shaders. 
 
 export const APPROACH = [
   {
-    title: 'Idea to production',
-    text: 'I like imagining products and building them all the way: architecture, contracts, backend, infrastructure, hiring. I also contribute to design and branding, and I have opinions there too.',
+    title: 'Product involvement',
+    text: 'For the yield protocol, I originated the product idea and designed the architecture. For the exchange, I co-developed the idea and led the team.',
   },
   {
-    title: 'Small teams, real load',
-    text: 'The onchain betting platform I run as CTO was built by three programmers. Its custom relayer can send 2,000+ transactions a minute and tops up its own gas.',
+    title: 'Small teams, full products',
+    text: 'Three programmers built the onchain betting platform. As CTO, I designed the architecture, wrote the entire backend and led the team.',
   },
   {
     title: 'Agents in production',
-    text: 'AI agents handle risk monitoring and the settlement of complex betting cases, flag production issues that regular monitoring misses, and let marketing and management get data without asking developers.',
+    text: 'I built AI agents for risk monitoring and complex bet settlement. I also built tools that let business teams get data without asking developers, and used an agent to flag production issues.',
   },
 ]
 
@@ -84,12 +84,12 @@ export const CAREER: Role[] = [
     period: 'Aug 2023 – Present',
     place: 'Remote',
     summary:
-      'A venture group building betting, exchange and DeFi products, plus onchain infrastructure for enterprise clients. I own smart contracts, backend, infrastructure and hiring.',
+      'A venture group building and launching betting, exchange and DeFi products. My work spans architecture, hands-on development and hiring, plus product ideas, design and community on selected projects.',
     points: [
-      'Onchain DFS betting: CTO with every technical decision on me. Wrote the whole backend, a custom relayer and AI agents for risk and settlement. Raised $2.5M.',
-      'Non-custodial yield protocol on Base: my product idea and architecture. About $30M peak TVL with funds among users. Acquired by a leading DEX.',
-      'Early BRC-20 / Ordinals exchange: co-authored the idea, designed the architecture, led the team. Raised $8M.',
-      'AI chat for swaps in 2023 on GPT-3.5 Turbo, about 1,000 DAU at peak. Co-CTO for infrastructure, backend and fine-tuning.',
+      'Onchain DFS betting: as CTO, owned the architecture and all technical decisions. Wrote the entire backend, relayer and AI agents for risk and settlement. $2.5M raised.',
+      'Non-custodial yield protocol on Base: my idea and architecture. About $30M peak TVL; users included investment funds. Acquired by a leading DEX.',
+      'Early BRC-20 / Ordinals exchange: co-developed the idea, designed the architecture, led the team. $8M raised.',
+      'AI swap chat (2023): Co-CTO for infrastructure, backend and model fine-tuning. About 1,000 DAU at peak.',
     ],
     stack: 'TypeScript, Solidity/Foundry, Rust, Next.js, Hono, MongoDB, Kubernetes',
   },
@@ -103,6 +103,7 @@ export const CAREER: Role[] = [
       'A DeFi/NFT game with a hybrid onchain/offchain economy. I designed the architecture from scratch when onchain games had few good examples, then built and led a 15-person team.',
     points: [
       'Shipped web and Unity games, an NFT marketplace, staking, a custom relayer and audited contracts.',
+      'Helped design the game economy and contributed to gameplay, design and branding. Worked with technical partners and represented the project to its community.',
       '$3M raised, 30K users, about 1K weekly active, $500K+ TVL. The WOD token passed $10M in daily trading volume.',
       'Delivered the roadmap through the crypto winter and the start of the war. World of Defish was acquired after almost two years.',
     ],

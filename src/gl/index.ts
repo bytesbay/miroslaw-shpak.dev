@@ -17,7 +17,7 @@ export type Gl = { frame(dt: number, t: number, mx: number, my: number): void; r
 const SHUTTLE_SCALE = 12
 
 export async function start(canvas: HTMLCanvasElement, onReady: () => void): Promise<Gl> {
-  const dprCap = Math.min(window.devicePixelRatio || 1, 1.75)
+  const dprCap = Math.min(window.devicePixelRatio || 1, 1.5)
   const renderer = new WebGLRenderer({ canvas, antialias: dprCap < 1.5, powerPreference: 'high-performance', alpha: false, stencil: false })
   renderer.setPixelRatio(dprCap)
   renderer.setSize(innerWidth, innerHeight, false)
@@ -58,23 +58,23 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
   // Detail scales with the device. Desktop: ~1.9M + ~0.5M triangles, ~100x the old low-poly planets.
   const weak = matchMedia('(pointer: coarse)').matches || (navigator as any).deviceMemory < 4
   const SEG_H = weak ? 150 : 400, SEG_D = weak ? 90 : 200
-  const homeMesh = makeDetailedPlanet({
-    radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
+  const homeMesh = makeDetailedPlanet(renderer, {
+    mapW: weak ? 2048 : 4096, radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
     colors: { deep: '#070d22', shallow: '#18305e', low: '#353646', mid: '#45435a', high: '#5a5370', peak: '#c9c4dc', amb: '#221d36', fill: '#4b55c8', sun: '#fff1e4', lights: '#ffb35c' },
   })
   const homeLo = new Mesh(sphereCube(48), homeMesh.material)
   homeLo.geometry.boundingSphere!.radius = R_H * 1.05
   homeLo.onBeforeRender = bindRotation
-  const homeClouds = makeClouds({ radius: R_H * 1.027, segs: weak ? 80 : 160, kind: 0, sun: SUN, seed: [2.3, 5.1, 8.8], tint: '#f2efff', opacity: 0.82 })
+  const homeClouds = makeClouds(renderer, { radius: R_H * 1.027, segs: weak ? 48 : 96, mapW: weak ? 1024 : 2048, sun: SUN, seed: [2.3, 5.1, 8.8], tint: '#f2efff', opacity: 0.82 })
   home.add(homeClouds)
-  home.add(homeMesh, homeLo, makeAtmosphere(R_H, '#6f8dff', SUN, 1.1, new Vector3(0, 0, 0)))
+  home.add(homeMesh, homeLo, makeAtmosphere(R_H, '#6f8dff', SUN, 1.15, new Vector3(0, 0, 0), R_H * 0.009, 0.022))
   scene.add(home)
 
   // destination planet with rings
   const dest = new Group()
   dest.position.copy(C_D)
-  const destMesh = makeDetailedPlanet({
-    radius: R_D, kind: 1, segs: SEG_D, amp: 0.045, seed: [11.3, 2.2, 5.6], sun: SUN,
+  const destMesh = makeDetailedPlanet(renderer, {
+    mapW: weak ? 1024 : 2048, radius: R_D, kind: 1, segs: SEG_D, amp: 0.045, seed: [11.3, 2.2, 5.6], sun: SUN,
     colors: { deep: '#000000', shallow: '#000000', low: '#1e0f1d', mid: '#4a2440', high: '#87485c', peak: '#d79a86', amb: '#2a1426', fill: '#7a3bb0', sun: '#fff1e4', lights: '#000000' },
   })
   const destLo = new Mesh(sphereCube(40), destMesh.material)
@@ -82,9 +82,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
   destLo.onBeforeRender = bindRotation
   const ring = makePlanetRing(R_D * 1.38, R_D * 2.1, SUN)
   ring.lookAt(new Vector3(-0.12, 1, 0.3))
-  const destHaze = makeClouds({ radius: R_D * 1.06, segs: weak ? 48 : 96, kind: 1, sun: SUN, seed: [6.6, 1.2, 3.3], tint: '#ffb6a8', opacity: 0.32 })
-  dest.add(destHaze)
-  dest.add(destMesh, destLo, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.55, C_D), ring)
+  dest.add(destMesh, destLo, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.7, C_D, R_D * 0.012, 0.05), ring)
   scene.add(dest)
 
   // career orbit, beacons, capture trail
@@ -258,8 +256,6 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
     destMesh.rotation.y += dt * 0.006
     homeLo.rotation.copy(homeMesh.rotation)
     homeClouds.rotation.y = homeMesh.rotation.y * 1.6
-    ;(homeClouds.material as ShaderMaterial).uniforms.uTime.value = time
-    ;(destHaze.material as ShaderMaterial).uniforms.uTime.value = time
     destLo.rotation.copy(destMesh.rotation)
     const nearH = R_H / Math.max(1, camera.position.length()) > 0.12
     homeMesh.visible = nearH; homeLo.visible = !nearH

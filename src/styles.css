@@ -159,7 +159,6 @@ html.fx .panel {
   opacity: var(--v, 0);
   transform: translate3d(0, calc((1 - var(--v, 0)) * var(--dir, 1) * 36px), 0);
   filter: blur(calc((1 - var(--v, 0)) * 6px));
-  will-change: opacity, transform;
 }
 html.fx .ch.is-hidden .panel { visibility: hidden; }
 html.fx .panel::before {
@@ -192,7 +191,6 @@ html.fx .role {
   grid-area: stack;
   opacity: var(--rv, 0);
   transform: translate3d(0, calc((1 - var(--rv, 0)) * var(--rdir, 1) * 46px), 0) scale(calc(0.97 + var(--rv, 0) * 0.03));
-  will-change: opacity, transform;
 }
 html.fx .role.is-off { visibility: hidden; }
 html.fx .orbit-dots { display: flex; list-style: none; padding: 0; margin: 18px 0 0; gap: 4px; font-size: 10px; color: var(--dim); }

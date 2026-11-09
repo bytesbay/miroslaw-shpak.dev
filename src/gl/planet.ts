@@ -1,4 +1,7 @@
-import { BufferGeometry, BufferAttribute, Mesh, ShaderMaterial, Color, Vector3, Matrix3, Sphere } from 'three'
+import {
+  BufferGeometry, BufferAttribute, Mesh, ShaderMaterial, Color, Vector3, Matrix3, Sphere, WebGLRenderer, WebGLRenderTarget,
+  HalfFloatType, RedFormat, LinearFilter, RepeatWrapping, ClampToEdgeWrapping, Scene, OrthographicCamera, PlaneGeometry, Texture,
+} from 'three'
 
 /*
   Procedural planets, generated on the GPU.
@@ -114,6 +117,46 @@ float craters(vec3 x){
 }
 `
 
+// equirectangular lookup shared by the bake pass and the planet shaders
+const UV = /* glsl */ `
+vec2 sphereUv(vec3 p){ return vec2(atan(p.z,p.x)*0.15915494+0.5, asin(clamp(p.y,-1.0,1.0))*0.31830989+0.5); }
+`
+
+/*
+  Terrain and clouds are expensive noise. They used to run per vertex on every frame (~2M vertices),
+  which dropped Chrome to ~26 fps. Now they are evaluated once into an equirectangular half-float
+  texture, and the per-frame shaders only sample it.
+*/
+function bake(renderer: WebGLRenderer, w: number, h: number, body: string, uniforms: Record<string, { value: unknown }>): Texture {
+  const rt = new WebGLRenderTarget(w, h, {
+    type: HalfFloatType, format: RedFormat, minFilter: LinearFilter, magFilter: LinearFilter,
+    wrapS: RepeatWrapping, wrapT: ClampToEdgeWrapping, depthBuffer: false, generateMipmaps: false,
+  })
+  const mat = new ShaderMaterial({
+    uniforms,
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }`,
+    fragmentShader: /* glsl */ `
+      ${NOISE}
+      ${body}
+      varying vec2 vUv;
+      void main(){
+        float lon=(vUv.x-0.5)*6.2831853, lat=(vUv.y-0.5)*3.1415927;
+        vec3 p=vec3(cos(lat)*cos(lon), sin(lat), cos(lat)*sin(lon));
+        gl_FragColor=vec4(value(p),0.0,0.0,1.0);
+      }`,
+  })
+  const scene = new Scene()
+  const quad = new Mesh(new PlaneGeometry(2, 2), mat)
+  quad.frustumCulled = false
+  scene.add(quad)
+  const prev = renderer.getRenderTarget()
+  renderer.setRenderTarget(rt)
+  renderer.render(scene, new OrthographicCamera())
+  renderer.setRenderTarget(prev)
+  mat.dispose(); quad.geometry.dispose()
+  return rt.texture
+}
+
 // height on the unit sphere; kind 0 = home, 1 = destination
 const HEIGHT = /* glsl */ `
 uniform float uKind; uniform vec3 uSeed;
@@ -142,6 +185,7 @@ export function bindRotation(this: Mesh) {
 }
 
 export type PlanetOpts = {
+  mapW: number
   radius: number
   kind: 0 | 1
   segs: number
@@ -151,23 +195,26 @@ export type PlanetOpts = {
   colors: Record<string, string>
 }
 
-export function makeDetailedPlanet(o: PlanetOpts) {
+export function makeDetailedPlanet(renderer: WebGLRenderer, o: PlanetOpts) {
   const col = (k: string) => ({ value: new Color(o.colors[k]) })
+  const hmap = bake(renderer, o.mapW, o.mapW / 2, `${HEIGHT}\nfloat value(vec3 p){ return height(p); }`, {
+    uKind: { value: o.kind }, uSeed: { value: new Vector3(...o.seed) },
+  })
   const mat = new ShaderMaterial({
     uniforms: {
+      uHMap: { value: hmap },
       uR: { value: o.radius }, uAmp: { value: o.amp }, uKind: { value: o.kind }, uSeed: { value: new Vector3(...o.seed) },
       uSun: { value: o.sun }, uTime: { value: 0 }, uNormalM: { value: new Matrix3() },
       cDeep: col('deep'), cShallow: col('shallow'), cLow: col('low'), cMid: col('mid'), cHigh: col('high'), cPeak: col('peak'),
       cAmb: col('amb'), cFill: col('fill'), cSun: col('sun'), cLights: col('lights'),
     },
     vertexShader: /* glsl */ `
-      ${NOISE}
-      ${HEIGHT}
-      uniform float uR, uAmp;
+      ${UV}
+      uniform sampler2D uHMap; uniform float uR, uAmp, uKind;
       varying vec3 vP; varying vec3 vL; varying float vH; varying vec3 vW;
       void main(){
         vec3 p=normalize(position);
-        float h=height(p);
+        float h=textureLod(uHMap, sphereUv(p), 0.0).r;
         vH=h; vP=p;
         float d = uKind < 0.5 ? max(h,0.0) : h;
         vec3 L=p*uR*(1.0+d*uAmp);
@@ -245,46 +292,36 @@ export function makeDetailedPlanet(o: PlanetOpts) {
   Cloud / haze shell. Home planet: domain-warped cloud fronts that drift slowly,
   lit by the sun with a warm tint along the terminator. Destination: thin banded dust haze.
 */
-export function makeClouds(o: { radius: number; segs: number; kind: 0 | 1; sun: Vector3; seed: [number, number, number]; tint: string; opacity: number }) {
+export function makeClouds(renderer: WebGLRenderer, o: { radius: number; segs: number; mapW: number; sun: Vector3; seed: [number, number, number]; tint: string; opacity: number }) {
+  const seed = new Vector3(...o.seed)
+  const cmap = bake(renderer, o.mapW, o.mapW / 2, /* glsl */ `
+    uniform vec3 uSeed;
+    float value(vec3 p){
+      vec3 q=p*2.2+uSeed;
+      vec3 w=vec3(fbm(q,3),fbm(q+vec3(4.1,7.3,2.2),3),fbm(q+vec3(8.7,1.9,5.5),3));
+      float d=fbm(q*1.6+w*1.4,5);
+      d+=0.18*sin(abs(p.y)*14.0+w.x*3.0);            // jet-stream bands
+      d+=snoise(p*36.0+w*2.0+uSeed)*0.09;            // wisps
+      return d;
+    }`, { uSeed: { value: seed } })
   const mat = new ShaderMaterial({
     uniforms: {
-      uSun: { value: o.sun }, uTime: { value: 0 }, uSeed: { value: new Vector3(...o.seed) }, uKind: { value: o.kind },
+      uMap: { value: cmap }, uSun: { value: o.sun }, uSeed: { value: seed },
       uTint: { value: new Color(o.tint) }, uOpacity: { value: o.opacity }, uNormalM: { value: new Matrix3() },
     },
-    // large-scale density per vertex (cheap), fine wisps per pixel
     vertexShader: /* glsl */ `
-      ${NOISE}
-      uniform vec3 uSeed; uniform float uTime, uKind;
-      varying vec3 vP; varying vec3 vW; varying float vD; varying vec3 vWarp;
-      void main(){
-        vec3 p=normalize(position); vP=p;
-        if(uKind<0.5){
-          vec3 q=p*2.2+uSeed+vec3(uTime*0.006,0.0,uTime*0.003);
-          vec3 w=vec3(fbm(q,3),fbm(q+vec3(4.1,7.3,2.2),3),fbm(q+vec3(8.7,1.9,5.5),3));
-          float d=fbm(q*1.6+w*1.4,5);
-          d+=0.18*sin(abs(p.y)*14.0+w.x*3.0);
-          vD=d; vWarp=w;
-        } else {
-          vec3 q=vec3(p.y*7.0,p.x*1.1,p.z*1.1)+uSeed+vec3(0.0,uTime*0.004,0.0);
-          vD=fbm(q+vec3(fbm(p*2.0+uSeed,3)*2.0),4); vWarp=vec3(0.0);
-        }
-        vec4 w4=modelMatrix*vec4(position,1.0); vW=w4.xyz;
-        gl_Position=projectionMatrix*viewMatrix*w4;
-      }`,
+      varying vec3 vP; varying vec3 vW;
+      void main(){ vP=normalize(position); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
     fragmentShader: /* glsl */ `
       ${NOISE}
-      uniform vec3 uSun, uSeed, uTint; uniform float uTime, uKind, uOpacity; uniform mat3 uNormalM;
-      varying vec3 vP; varying vec3 vW; varying float vD; varying vec3 vWarp;
+      ${UV}
+      uniform sampler2D uMap; uniform vec3 uSun, uSeed, uTint; uniform float uOpacity; uniform mat3 uNormalM;
+      varying vec3 vP; varying vec3 vW;
       void main(){
-        vec3 p=vP;
-        float c;
-        if(uKind<0.5){
-          float fine=snoise(p*36.0+vWarp*2.0+uSeed)*0.09+snoise(p*110.0+uSeed)*0.04;
-          c=smoothstep(0.08,0.42,vD+fine);
-        } else {
-          c=smoothstep(0.0,0.5,vD+snoise(vec3(p.y*40.0,p.x*6.0,p.z*6.0))*0.05)*0.8;
-        }
-        vec3 S=normalize(uNormalM*p);
+        float d=textureLod(uMap, sphereUv(vP), 0.0).r;
+        d+=snoise(vP*140.0+uSeed)*0.05+snoise(vP*420.0+uSeed*1.7)*0.025;  // close-up detail
+        float c=smoothstep(0.12,0.46,d);
+        vec3 S=normalize(uNormalM*vP);
         vec3 V=normalize(cameraPosition-vW);
         float sd=dot(S,uSun);
         float day=smoothstep(-0.18,0.35,sd);
@@ -297,10 +334,9 @@ export function makeClouds(o: { radius: number; segs: number; kind: 0 | 1; sun: 
       }`,
     transparent: true, depthWrite: false,
   })
-  const mesh = new Mesh(sphereCube(Math.min(o.segs, 32)), mat)
+  const mesh = new Mesh(sphereCube(o.segs), mat)
   mesh.scale.setScalar(o.radius)
   mesh.geometry.boundingSphere!.radius = 1.01
-  sphereCubeAsync(o.segs).then((g) => { mesh.geometry.dispose(); g.boundingSphere!.radius = 1.01; mesh.geometry = g })
   mesh.onBeforeRender = bindRotation
   mesh.renderOrder = 2
   return mesh

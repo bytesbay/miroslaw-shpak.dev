@@ -42,7 +42,7 @@ function about() {
   ).join('')
   return stage('about', `
       <p class="kicker">01 · About</p>
-      <h2>I own the hard parts and still write the code</h2>
+      <h2>Hands-on CTO &amp; product engineer</h2>
       <p>${esc(ABOUT)}</p>
       <ul class="stats">${stats}</ul>`)
 }
@@ -219,7 +219,7 @@ export function jsonLd(page: 'home' | 'cv') {
 
 export function head(page: 'home' | 'cv') {
   const url = page === 'cv' ? `${SITE.url}/cv/` : `${SITE.url}/`
-  const title = page === 'cv' ? 'Miroslaw Shpak · CV · CTO & Senior Software Engineer' : SITE.title
+  const title = page === 'cv' ? 'Miroslaw Shpak | CV | Hands-on CTO & Product Engineer' : SITE.title
   const desc =
     page === 'cv'
       ? 'CV of Miroslaw Shpak: hands-on CTO and senior software engineer. TypeScript, Solidity, Rust, Kubernetes and AI agents. Wrocław, Poland. Open to Staff, Tech Lead and CTO roles.'
@@ -275,7 +275,7 @@ export function renderCv(stars: Stars) {
   <header class="cv-head">
     <div>
       <h1>Miroslaw Shpak</h1>
-      <p class="cv-title">Hands-on CTO & Co-founder · Senior Software Engineer</p>
+      <p class="cv-title">Hands-on CTO & Co-founder · Product Engineer</p>
       <p class="cv-meta">Also written as Mirosław Shpak, Myroslav Shpak, Мирослав Шпак (bytesbay)</p>
       <p class="cv-meta">Wrocław, Poland · <a href="mailto:${SITE.email}">${SITE.email}</a> · <a href="${SITE.links.linkedin}" rel="me">linkedin.com/in/miroslaw-shpak</a> · <a href="${SITE.links.github}" rel="me">github.com/bytesbay</a> · <a href="${SITE.url}/">miroslaw-shpak.dev</a></p>
     </div>

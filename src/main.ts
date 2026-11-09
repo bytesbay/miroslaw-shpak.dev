@@ -24,7 +24,7 @@ const smooth = (a: number, b: number, x: number) => {
 }
 const now = () => performance.now()
 
-type Ch = { el: HTMLElement; id: string; label: string; len: number; top: number; height: number; anchors: number[]; key0: number }
+type Ch = { el: HTMLElement; panel: HTMLElement; id: string; label: string; len: number; top: number; height: number; anchors: number[]; key0: number }
 
 const sections = Array.from(document.querySelectorAll<HTMLElement>('main .ch'))
 const roles = Array.from(document.querySelectorAll<HTMLElement>('.ch-career .role'))
@@ -35,7 +35,7 @@ const hudStrip = document.querySelector<HTMLElement>('[data-hud-strip]')
 const warpOut = document.querySelector<HTMLElement>('[data-warp]')
 
 const chapters: Ch[] = sections.map((el) => ({
-  el, id: el.id, label: el.dataset.label || el.id, len: parseFloat(el.dataset.len || '1'), top: 0, height: 0, anchors: [], key0: 0,
+  el, panel: el.querySelector<HTMLElement>('.panel')!, id: el.id, label: el.dataset.label || el.id, len: parseFloat(el.dataset.len || '1'), top: 0, height: 0, anchors: [], key0: 0,
 }))
 
 let vh = innerHeight
@@ -49,6 +49,7 @@ function measure() {
   maxScroll = Math.max(0, document.documentElement.scrollHeight - vh)
   const stage = document.querySelector<HTMLElement>('.stage')
   sticky = !!stage && getComputedStyle(stage).position === 'sticky'
+  if (!sticky) roles.forEach(clearLook)
   anchors = []
   for (const c of chapters) {
     const r = c.el.getBoundingClientRect()
@@ -243,18 +244,26 @@ document.addEventListener('click', (e) => {
 let activeCh = -1
 let hudOffset = 0
 const lastV = new Map<HTMLElement, string>()
-function setVar(el: HTMLElement, name: string, v: number) {
-  const s = v.toFixed(3)
-  const key = name
-  const m = (el as any)._v || ((el as any)._v = {})
-  if (m[key] === s) return
-  m[key] = s
-  el.style.setProperty(name, s)
+// Opacity, offset and blur are written as plain inline styles. WebKit does not always repaint
+// properties that go through calc(var(--v)), which left Safari showing stale, blurred panels.
+function setLook(el: HTMLElement, v: number, dir: number, dist: number, blur: boolean, scale = false) {
+  const key = v.toFixed(3) + dir
+  if ((el as any)._look === key) return
+  ;(el as any)._look = key
+  const y = ((1 - v) * dir * dist).toFixed(2)
+  el.style.opacity = v.toFixed(3)
+  el.style.transform = v > 0.995 ? 'none' : `translate3d(0,${y}px,0)` + (scale ? ` scale(${(0.97 + v * 0.03).toFixed(4)})` : '')
+  if (blur) el.style.filter = v > 0.995 ? 'none' : `blur(${((1 - v) * 6).toFixed(2)}px)`
+}
+
+function clearLook(el: HTMLElement) {
+  ;(el as any)._look = ''
+  el.style.opacity = el.style.transform = el.style.filter = ''
 }
 
 const STEP = 200
-const fmt = (v: number) => (v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(v))
 // each checkpoint is 1K, intermediate labels every 200
+const fmt = (v: number) => (v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(v))
 
 function buildHud() {
   if (!hudStrip) return
@@ -307,8 +316,7 @@ function updatePanels(y: number, t: number, dt: number) {
       const d = y < a0 ? a0 - y : y > a1 && !last ? y - a1 : 0
       const h = c.id === 'career' ? (c.len * vh) / roles.length / 2 : (c.len * vh) / 2
       const v = c.id === 'hello' ? 1 - smooth(0.06 * vh, 0.55 * vh, d) : 1 - smooth(h * 0.5 + 0.08 * vh, h * 0.5 + 0.72 * vh, d)
-      setVar(c.el, '--v', v)
-      setVar(c.el, '--dir', y < a0 ? 1 : -1)
+      setLook(c.panel, v, y < a0 ? 1 : -1, 36, true)
       c.el.classList.toggle('is-hidden', v < 0.002)
     }
     const career = chapters.find((c) => c.id === 'career')!
@@ -318,18 +326,16 @@ function updatePanels(y: number, t: number, dt: number) {
       const a = career.anchors[j]
       const d = Math.abs(y - a)
       const v = 1 - smooth(unitH * 0.22, unitH * 1.08, d)
-      setVar(li, '--rv', v)
-      setVar(li, '--rdir', y < a ? 1 : -1)
+      setLook(li, v, y < a ? 1 : -1, 46, false, true)
       li.classList.toggle('is-off', v < 0.002)
       if (v > bestV) { bestV = v; best = j }
     })
     roleDots.forEach((d, j) => d.classList.toggle('on', j === best))
   } else if (FX) {
     for (const c of chapters) {
-      const r = c.el.querySelector('.panel')!.getBoundingClientRect()
+      const r = c.panel.getBoundingClientRect()
       const v = clamp(Math.min(r.bottom - vh * 0.08, vh * 0.92 - r.top) / (vh * 0.22), 0, 1)
-      setVar(c.el, '--v', c.id === 'hello' ? Math.max(v, y < 10 ? 1 : 0) : v)
-      setVar(c.el, '--dir', r.top > vh / 2 ? 1 : -1)
+      setLook(c.panel, c.id === 'hello' ? Math.max(v, y < 10 ? 1 : 0) : v, r.top > vh / 2 ? 1 : -1, 36, false)
     }
   }
 
