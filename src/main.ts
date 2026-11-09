@@ -224,6 +224,12 @@ addEventListener('hashchange', () => {
 })
 
 document.addEventListener('click', (e) => {
+  const r = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-role]')
+  if (r && FX && sticky) {
+    e.preventDefault()
+    goTo(anchors[chapters.find((c) => c.id === 'career')!.key0 + Number(r.dataset.role)])
+    return
+  }
   const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-go]')
   if (!a) return
   const id = a.dataset.go!
@@ -246,14 +252,21 @@ function setVar(el: HTMLElement, name: string, v: number) {
   el.style.setProperty(name, s)
 }
 
+const STEP = 200
+const fmt = (v: number) => (v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(v))
+// each checkpoint is 1K, intermediate labels every 200
+
 function buildHud() {
   if (!hudStrip) return
   let h = ''
   for (let i = 0; i < anchors.length; i++) {
     for (let n = 0; n < 10; n++) {
-      const x = i * 150 + n * 15
-      if (n === 0) h += `<i class="cp" data-k="${i}" style="left:${x}px" title="${chapterOfKey(i).label}"><b>${i * 100}</b></i>`
-      else h += n % 2 === 0 ? `<i class="mid" style="left:${x}px"><b>${(i * 10 + n) * 10}</b></i>` : `<i style="left:${x}px"></i>`
+      const x = i * STEP + n * (STEP / 10)
+      if (n === 0) h += `<i class="cp" data-k="${i}" style="left:${x}px" title="${chapterOfKey(i).label}"><b>${fmt(i * 1000)}</b></i>`
+      else if (n % 2 === 0) {
+        const l = fmt(i * 1000 + n * 100)
+        h += `<i class="mid" style="left:${x}px">${l.length <= 4 ? `<b>${l}</b>` : ''}</i>`
+      } else h += `<i style="left:${x}px"></i>`
     }
   }
   hudStrip.innerHTML = h
@@ -286,10 +299,12 @@ function setLabel(label: string, dir: number) {
 
 function updatePanels(y: number, t: number, dt: number) {
   html.classList.toggle('scrolled', y > 40)
+  html.classList.toggle('at-end', y > anchors[anchors.length - 1] + vh * 0.12)
   if (sticky) {
     for (const c of chapters) {
       const a0 = c.anchors[0], a1 = c.anchors[c.anchors.length - 1]
-      const d = y < a0 ? a0 - y : y > a1 ? y - a1 : 0
+      const last = c === chapters[chapters.length - 1]
+      const d = y < a0 ? a0 - y : y > a1 && !last ? y - a1 : 0
       const h = c.id === 'career' ? (c.len * vh) / roles.length / 2 : (c.len * vh) / 2
       const v = c.id === 'hello' ? 1 - smooth(0.06 * vh, 0.55 * vh, d) : 1 - smooth(h * 0.5 + 0.08 * vh, h * 0.5 + 0.72 * vh, d)
       setVar(c.el, '--v', v)
@@ -338,8 +353,8 @@ function updatePanels(y: number, t: number, dt: number) {
     cpOn = on
   }
   if (hudStrip) {
-    hudOffset += (t * 150 - hudOffset) * (1 - Math.pow(1 - 0.08, dt * 60))
-    hudStrip.style.transform = `translate3d(${230 - hudOffset}px,0,0)`
+    hudOffset += (t * STEP - hudOffset) * (1 - Math.pow(1 - 0.08, dt * 60))
+    hudStrip.style.transform = `translate3d(${260 - hudOffset}px,0,0)`
   }
 }
 

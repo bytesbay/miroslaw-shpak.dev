@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import { resolve } from 'node:path'
-import { renderStory, renderNav, renderFooter, renderCv, head, llmsTxt, LOGO, type Stars } from './src/render'
+import { renderStory, renderNav, renderFooter, renderCv, head, llmsTxt, type Stars } from './src/render'
 import { OPEN_SOURCE, SITE } from './src/content'
 
 import { cloudflare } from "@cloudflare/vite-plugin";
@@ -38,7 +38,6 @@ function site(): Plugin {
         .replace('<!--@nav-->', renderNav())
         .replace('<!--@footer-->', renderFooter())
         .replace('<!--@cv-->', renderCv(stars))
-        .replaceAll('<!--@logo-->', LOGO)
     },
     generateBundle() {
       const today = new Date().toISOString().slice(0, 10)

@@ -19,8 +19,6 @@ const icon = {
   telegram: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.94 4.3 18.9 19.1c-.22 1-.82 1.24-1.66.77l-4.6-3.4-2.22 2.14c-.25.25-.45.45-.93.45l.33-4.7 8.56-7.73c.37-.33-.08-.52-.58-.19L7.2 13.1 2.66 11.7c-.99-.31-1-.99.2-1.46L20.6 3.4c.82-.3 1.54.2 1.34.9Z"/></svg>',
 }
 
-export const LOGO = `<svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><radialGradient id="lg" cx="30%" cy="10%" r="110%"><stop offset="0" stop-color="#ff2a75"/><stop offset="1" stop-color="#3a0a5e"/></radialGradient></defs><path fill="url(#lg)" d="M32 4C20 4 12 14 7 26l-5 12h9l5-12c3-8 9-13 16-13s13 5 16 13l5 12h9l-5-12C52 14 44 4 32 4Z"/><path fill="url(#lg)" d="M3 42h10v4H3zm48 0h10v4H51zM3 50h12v4H3zm46 0h12v4H49zM8 58h48v3H8z"/><text x="32" y="44" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="17" fill="#fff">MS</text></svg>`
-
 /* ---------------------------------------------------------------- story */
 
 function stage(id: string, inner: string, cls = '') {
@@ -88,12 +86,14 @@ function career() {
   const roles = CAREER.map(
     (r, i) => `<li class="role" data-i="${i}" id="career-${r.id}">${roleArticle(r)}</li>`,
   ).join('')
-  const dots = CAREER.map((r, i) => `<li data-i="${i}"><span>${esc(r.period.split(' – ')[0].replace(/^\w+ /, ''))}</span></li>`).join('')
+  const dots = CAREER.map(
+    (r, i) => `<li data-i="${i}"><a href="#career-${r.id}" data-role="${i}" aria-label="${esc(r.role + ', ' + r.company)}">${esc(r.period.split(' – ')[0].replace(/^\w+ /, ''))}</a></li>`,
+  ).join('')
   return `<div class="stage"><div class="panel panel-career">
       <p class="kicker">04 · Career</p>
       <h2>Career orbit</h2>
       <ol class="roles">${roles}</ol>
-      <ol class="orbit-dots" aria-hidden="true">${dots}</ol>
+      <ol class="orbit-dots">${dots}</ol>
     </div></div>`
 }
 

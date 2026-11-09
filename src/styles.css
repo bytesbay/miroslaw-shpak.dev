@@ -64,7 +64,6 @@ html.nofx #gl { display: none; }
   background: linear-gradient(#07060ccc, #07060c00);
 }
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
-.logo { width: 30px; height: 30px; }
 .nav { display: flex; align-items: center; gap: clamp(10px, 2vw, 26px); font-size: 14px; }
 .nav a:not(.btn) { color: var(--muted); text-decoration: none; transition: color 0.2s; }
 .nav a:not(.btn):hover, .nav a.is-active { color: var(--ink); }
@@ -187,6 +186,7 @@ html.fx .ch-contact .contacts, html.fx .ch-contact .cta { justify-content: cente
 html.fx .ch-contact .lead { margin-left: auto; margin-right: auto; }
 
 html.fx .panel-career { max-width: 560px; width: 100%; }
+html.fx .ch-career .stage { padding: 72px 0 112px; }
 html.fx .roles { display: grid; grid-template-areas: 'stack'; gap: 0; }
 html.fx .role {
   grid-area: stack;
@@ -196,8 +196,11 @@ html.fx .role {
 }
 html.fx .role.is-off { visibility: hidden; }
 html.fx .orbit-dots { display: flex; list-style: none; padding: 0; margin: 18px 0 0; gap: 4px; font-size: 10px; color: var(--dim); }
-html.fx .orbit-dots li { flex: 1; padding-top: 10px; border-top: 2px solid var(--line); transition: color 0.4s, border-color 0.4s; text-align: left; }
-html.fx .orbit-dots li.on { color: var(--ink); border-color: var(--accent); }
+html.fx .orbit-dots li { flex: 1; transition: color 0.4s; }
+html.fx .orbit-dots a { display: block; padding: 10px 0 4px; border-top: 2px solid var(--line); color: inherit; text-decoration: none; transition: color 0.3s, border-color 0.3s; }
+html.fx .orbit-dots a:hover { color: var(--ink); border-color: #ff2a7588; }
+html.fx .orbit-dots li.on { color: var(--ink); }
+html.fx .orbit-dots li.on a { border-color: var(--accent); }
 
 /* HUD: step ruler borrowed from the Shuttle site */
 html.fx .hud {
@@ -205,11 +208,13 @@ html.fx .hud {
   pointer-events: none; opacity: 0; transition: opacity 0.8s var(--ease);
 }
 html.fx.scrolled .hud { opacity: 1; }
+html.fx.at-end .hud { opacity: 0; pointer-events: none; }
+html.fx.at-end .hud-ruler { pointer-events: none; }
 .hud-label { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: 190px; height: 28px; border: 2px solid var(--accent); color: var(--accent); font-size: 13px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #07060c99; }
 .hud-label span { display: block; transition: transform 0.45s var(--ease), opacity 0.45s; }
 .hud-label span.out-l { transform: translateX(-60px); opacity: 0; }
 .hud-label span.out-r { transform: translateX(60px); opacity: 0; }
-.hud-ruler { width: 460px; height: 44px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
+.hud-ruler { width: 520px; height: 44px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
 .hud-strip { position: relative; height: 100%; will-change: transform; }
 .hud-strip i { position: absolute; bottom: 0; width: 2px; height: 5px; background: #fff; transform: translateX(-50%); }
 .hud-strip i.mid { height: 10px; }
@@ -268,7 +273,7 @@ html.nofx .ch-approach .panel { max-width: 1000px; }
   html.fx .role-card { padding: 18px 22px; }
   html.fx .role-card li { font-size: 14px; margin-bottom: 4px; }
   html.fx .role-card .stack-line { display: none; }
-  html.fx .ch-career .stage { padding-top: 40px; }
+  html.fx .ch-career .stage { padding: 64px 0 104px; }
   html.fx .ch-stack .chips li { padding: 4px 9px; font-size: 12.5px; }
   html.fx .ch-stack h2, html.fx .ch-about h2 { font-size: 38px; }
 }
