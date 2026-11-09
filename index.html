@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!--@head-->
   <script>
-    // Visitors from Cyprus do not see the CV. Country comes from Cloudflare's /cdn-cgi/trace on this domain.
+    // Visitors from Cyprus and Portugal do not see the CV. Country comes from Cloudflare's /cdn-cgi/trace on this domain.
     // ?geo=XX overrides it for testing.
     (function () {
       var d = document.documentElement
       d.classList.add('geo-pending')
       var finish = function (c) {
         d.classList.remove('geo-pending')
-        if (c === 'CY') {
+        if (c === 'CY' || c === 'PT') {
           d.classList.add('geo-cy')
           if (location.pathname.indexOf('/cv') === 0) location.replace('/')
         }
