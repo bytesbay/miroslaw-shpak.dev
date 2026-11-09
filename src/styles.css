@@ -209,12 +209,21 @@ html.fx.scrolled .hud { opacity: 1; }
 .hud-label span { display: block; transition: transform 0.45s var(--ease), opacity 0.45s; }
 .hud-label span.out-l { transform: translateX(-60px); opacity: 0; }
 .hud-label span.out-r { transform: translateX(60px); opacity: 0; }
-.hud-ruler { width: 300px; height: 38px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); }
+.hud-ruler { width: 460px; height: 44px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
 .hud-strip { position: relative; height: 100%; will-change: transform; }
 .hud-strip i { position: absolute; bottom: 0; width: 2px; height: 5px; background: #fff; transform: translateX(-50%); }
 .hud-strip i.mid { height: 10px; }
 .hud-strip i b { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-weight: 400; font-style: normal; font-size: 11px; color: #fff; }
 .hud-strip::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: #fff; }
+.hud-ruler { pointer-events: auto; }
+.hud-strip i.cp { height: 14px; width: 2px; background: var(--accent); cursor: pointer; transition: height 0.3s var(--ease), box-shadow 0.3s; }
+.hud-strip i.cp::before { content: ''; position: absolute; left: -11px; right: -11px; top: -24px; bottom: 0; }
+.hud-strip i.cp::after { content: ''; position: absolute; left: 50%; top: -3px; width: 7px; height: 7px; margin-left: -3.5px; background: var(--bg); border: 1.5px solid var(--accent); transform: rotate(45deg); transition: background 0.3s, transform 0.3s var(--ease); }
+.hud-strip i.cp b { color: var(--accent); bottom: 20px; }
+.hud-strip i.cp.on { height: 18px; box-shadow: 0 0 10px var(--accent); }
+.hud-strip i.cp.on::after { background: var(--accent); transform: rotate(45deg) scale(1.25); }
+.hud-strip i.cp.on b { color: #fff; text-shadow: 0 0 8px var(--accent); }
+.hud-strip i.cp:hover::after { background: var(--accent); }
 .hud-pin { position: absolute; left: 50%; top: 100%; width: 22px; transform: translateX(-50%); fill: #fafafa; }
 
 html.fx .scroll-tip { display: block; position: fixed; left: 50%; bottom: 3.5vh; z-index: 15; width: 22px; height: 36px; margin-left: -11px; border: 2px solid var(--accent); border-radius: 12px; transition: opacity 0.6s; }

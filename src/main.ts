@@ -252,11 +252,26 @@ function buildHud() {
   for (let i = 0; i < anchors.length; i++) {
     for (let n = 0; n < 10; n++) {
       const x = i * 150 + n * 15
-      h += n % 2 === 0 ? `<i class="mid" style="left:${x}px"><b>${(i * 10 + n) * 10}</b></i>` : `<i style="left:${x}px"></i>`
+      if (n === 0) h += `<i class="cp" data-k="${i}" style="left:${x}px" title="${chapterOfKey(i).label}"><b>${i * 100}</b></i>`
+      else h += n % 2 === 0 ? `<i class="mid" style="left:${x}px"><b>${(i * 10 + n) * 10}</b></i>` : `<i style="left:${x}px"></i>`
     }
   }
   hudStrip.innerHTML = h
+  cps = Array.from(hudStrip.querySelectorAll<HTMLElement>('.cp'))
 }
+
+// Checkpoints on the ruler: one per snap point, the active one lights up, click to fly there.
+let cps: HTMLElement[] = []
+let cpOn = -2
+function chapterOfKey(k: number) {
+  let c = chapters[0]
+  for (const x of chapters) if (k >= x.key0) c = x
+  return c
+}
+hudStrip?.addEventListener('click', (e) => {
+  const cp = (e.target as HTMLElement).closest<HTMLElement>('.cp')
+  if (cp) goTo(anchors[Number(cp.dataset.k)])
+})
 
 function setLabel(label: string, dir: number) {
   if (!hudLabel || hudLabel.textContent === label) return
@@ -316,9 +331,15 @@ function updatePanels(y: number, t: number, dt: number) {
     if (FX && scrollY > 10) history.replaceState(null, '', c.id === 'hello' ? location.pathname : '#' + c.id)
   }
 
+  const k = Math.round(t)
+  const on = Math.abs(t - k) < 0.12 ? k : -1
+  if (on !== cpOn) {
+    cps.forEach((el, i) => el.classList.toggle('on', i === on))
+    cpOn = on
+  }
   if (hudStrip) {
     hudOffset += (t * 150 - hudOffset) * (1 - Math.pow(1 - 0.08, dt * 60))
-    hudStrip.style.transform = `translate3d(${150 - hudOffset}px,0,0)`
+    hudStrip.style.transform = `translate3d(${230 - hudOffset}px,0,0)`
   }
 }
 
