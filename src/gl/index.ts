@@ -1,11 +1,10 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, Color, DirectionalLight, AmbientLight, Vector3, Quaternion, Group, Mesh,
   ConeGeometry, ShaderMaterial, AdditiveBlending, AnimationMixer, ACESFilmicToneMapping, SRGBColorSpace,
-  PMREMGenerator, MathUtils, Sprite, Material, Vector2, WebGLRenderTarget, HalfFloatType, NearestFilter, OrthographicCamera, PlaneGeometry,
+  PMREMGenerator, MathUtils, Sprite, Material, MeshStandardMaterial, SphereGeometry, BackSide, PCFSoftShadowMap, Vector2, WebGLRenderTarget, HalfFloatType, NearestFilter, OrthographicCamera, PlaneGeometry,
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import {
   evaluate, newPose, orient, configure, R_H, C_D, R_D, SUN, N_O, ringPoint, thetaOf, capturePoint, CAREER_FIRST, CAREER_COUNT, smooth, THETA0,
 } from './timeline'
@@ -79,12 +78,42 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   sun.position.copy(SUN)
   const fill = new DirectionalLight('#5b6cff', 0.35)
   fill.position.copy(SUN).negate()
-  scene.add(sun, sun.target, fill, new AmbientLight('#2b2442', 0.9))
+  scene.add(sun, sun.target, fill, new AmbientLight('#2b2442', 0.25))
 
+  // Space environment for the metal hull: black sky, bluish bounce from the planet below,
+  // a hot sun. A studio environment made the shuttle look like a plastic toy.
+  const envScene = new Scene()
+  envScene.add(new Mesh(new SphereGeometry(10, 48, 24), new ShaderMaterial({
+    side: BackSide,
+    uniforms: { uSun: { value: SUN } },
+    vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSun; varying vec3 vD;
+      void main(){
+        float below = smoothstep(0.1, -0.6, vD.y);
+        float above = smoothstep(-0.2, 0.9, vD.y);
+        vec3 c = vec3(0.06, 0.06, 0.08) * above + vec3(0.18, 0.22, 0.42) * below + vec3(0.03);
+        float s = max(dot(vD, uSun), 0.0);
+        c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 60.0 + pow(s, 12.0) * 0.35);
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  })))
   const pmrem = new PMREMGenerator(renderer)
-  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  const env = pmrem.fromScene(envScene, 0).texture
   scene.environment = env
-  scene.environmentIntensity = 0.35
+  scene.environmentIntensity = 1
+
+  // real self-shadowing on the shuttle: a small shadow map that follows it
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = PCFSoftShadowMap
+  sun.castShadow = true
+  sun.shadow.mapSize.set(1024, 1024)
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -3
+  sun.shadow.camera.right = sun.shadow.camera.top = 3
+  sun.shadow.camera.near = 1
+  sun.shadow.camera.far = 80
+  sun.shadow.bias = -0.0004
+  sun.shadow.normalBias = 0.02
 
   await nextFrame()
   // sky
@@ -195,11 +224,15 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     loader.load('/models/shuttle.glb', (gltf) => {
     const m = gltf.scene
     m.scale.setScalar(SHUTTLE_SCALE)
+    // three meshes (hull + two cargo doors), one brushed-metal material with baked vertex colours
+    const hull = new MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.34, envMapIntensity: 1.4 })
     m.traverse((o) => {
       const mesh = o as Mesh
       if (mesh.isMesh) {
-        const mat = mesh.material as Material & { envMapIntensity?: number }
-        if ('envMapIntensity' in mat) mat.envMapIntensity = 0.6
+        ;(mesh.material as Material).dispose()
+        mesh.material = hull
+        mesh.castShadow = true
+        mesh.receiveShadow = true
       }
     })
     body.add(m)
@@ -265,6 +298,8 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
     orient(pose.f, pose.up, q)
     shuttle.quaternion.copy(q)
     shuttle.position.copy(pose.sp)
+    sun.target.position.copy(pose.sp)
+    sun.position.copy(pose.sp).addScaledVector(SUN, 40)
     const bob = Math.sin(time * 0.9) * 0.12 * (1 - pose.warp)
     shuttle.position.addScaledVector(pose.up, bob)
     body.rotation.z = Math.sin(time * 0.6) * 0.03 + pmx * 0.08 * (1 - pose.warp)

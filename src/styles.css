@@ -20,7 +20,7 @@
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 html { background: var(--bg); color: var(--ink); -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -240,12 +240,12 @@ html.fx.at-end .hud-ruler { pointer-events: none; }
 .hud-strip { position: relative; height: 100%; will-change: transform; }
 .hud-strip i { position: absolute; bottom: 0; width: 2px; height: 5px; background: #fff; transform: translateX(-50%); }
 .hud-strip i.mid { height: 10px; }
-.hud-strip i b { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-weight: 400; font-style: normal; font-size: 11px; color: #fff; }
+.hud-strip i b { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); padding-left: 0.06em; font-weight: 400; font-style: normal; font-size: 11px; color: #fff; }
 .hud-strip::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: #fff; }
 .hud-ruler { pointer-events: auto; }
 .hud-strip i.cp { height: 14px; width: 2px; background: var(--accent); cursor: pointer; transition: height 0.3s var(--ease), box-shadow 0.3s; }
 .hud-strip i.cp::before { content: ''; position: absolute; left: -11px; right: -11px; top: -24px; bottom: 0; }
-.hud-strip i.cp::after { content: ''; position: absolute; left: 50%; top: -4px; width: 8px; height: 8px; margin-left: -4px; background: var(--bg); border: 2px solid var(--accent); transform: rotate(45deg); transition: background 0.3s, transform 0.3s var(--ease); }
+.hud-strip i.cp::after { content: ''; position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; background: var(--bg); border: 2px solid var(--accent); transform: rotate(45deg); transition: background 0.3s, transform 0.3s var(--ease); }
 .hud-strip i.cp b { color: var(--accent); bottom: 20px; }
 .hud-strip i.cp.on { height: 18px; box-shadow: 0 0 10px var(--accent); }
 .hud-strip i.cp.on::after { background: var(--accent); transform: rotate(45deg) scale(1.25); }
