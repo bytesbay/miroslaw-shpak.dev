@@ -319,6 +319,11 @@ export function evaluate(t: number, out: Pose): Pose {
     const toPlanet = _t2.subVectors(C_D, out.sp).normalize()
     const look = 0.62 * smooth(0.08, 0.42, u)
     const chaseTo = _t3.copy(out.f).multiplyScalar(1 - look).addScaledVector(toPlanet, look).normalize().multiplyScalar(80)
+    // the rest pose at 3K has a small side offset and a lifted aim; fade them out here
+    // instead of dropping them at the keyframe (that was the jolt at 3K)
+    const keep = 1 - smooth(0, 0.5, u)
+    chase.addScaledVector(_t2.crossVectors(UP_D, DIR_D).normalize(), -1.6 * keep)
+    chaseTo.addScaledVector(UP_D, 1.5 * keep)
     const w = smooth(0.5, 1, u)
     swing(chase, K[4].co, easeInOut(w), out.co)
     out.to.lerpVectors(chaseTo, K[4].to, easeInOut(w))

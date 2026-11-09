@@ -362,7 +362,9 @@ function updatePanels(y: number, t: number, dt: number) {
   }
   if (hudStrip) {
     hudOffset += (t * STEP - hudOffset) * (1 - Math.pow(1 - 0.08, dt * 60))
-    hudStrip.style.transform = `translate3d(${260 - hudOffset}px,0,0)`
+    // snap to device pixels so the tick and the rotated diamond stay on the same pixel column
+    const dpr = window.devicePixelRatio || 1
+    hudStrip.style.transform = `translate3d(${Math.round((260 - hudOffset) * dpr) / dpr}px,0,0)`
   }
 }
 
