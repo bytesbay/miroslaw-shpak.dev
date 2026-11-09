@@ -123,19 +123,19 @@ export const CAREER: Role[] = [
   },
   {
     id: 'smart-fertilizer',
-    company: 'Smart Fertilizer / Yellow Brick Technologies',
+    company: 'Smart Fertilizer (now IPNUK) / Yellow Brick Technologies',
     role: 'Technical Lead',
     period: 'Aug 2019 – Jan 2021',
     place: 'London, remote',
     summary:
       'Led an existing 20-person team modernizing a scientific agtech platform. Chose an API layer around a 25-year-old Visual Basic calculation core that could not be rewritten within the project. Designed a microservice architecture around the team\'s existing Vue/Laravel, .NET and Node.js skills.',
-    points: ['Worked with scientists on soil analysis, sensor data and satellite imagery. The product is now known as IPNUK.'],
+    points: ['Worked with scientists on soil analysis, sensor data and satellite imagery.'],
     link: { href: 'https://ipnuk.com', label: 'ipnuk.com' },
   },
   {
     id: 'coelix',
     company: 'Coelix',
-    role: 'Head Software Architect',
+    role: 'Head Software Architect (R&D)',
     period: 'Sep 2018 – Aug 2019',
     place: 'Odesa',
     summary:
