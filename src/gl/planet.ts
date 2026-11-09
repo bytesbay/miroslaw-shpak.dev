@@ -182,8 +182,8 @@ vec2 sphereUv(vec3 p){ return vec2(atan(p.z,p.x)*0.15915494+0.5, asin(clamp(p.y,
 */
 function bake(renderer: WebGLRenderer, w: number, h: number, body: string, uniforms: Record<string, { value: unknown }>, main?: string): Texture {
   const rt = new WebGLRenderTarget(w, h, {
-    type: HalfFloatType, format: RedFormat, minFilter: LinearFilter, magFilter: LinearFilter,
-    wrapS: RepeatWrapping, wrapT: ClampToEdgeWrapping, depthBuffer: false, generateMipmaps: false,
+    type: HalfFloatType, format: RedFormat, minFilter: LinearMipmapLinearFilter, magFilter: LinearFilter,
+    wrapS: RepeatWrapping, wrapT: ClampToEdgeWrapping, depthBuffer: false, generateMipmaps: true,
   })
   const mat = new ShaderMaterial({
     uniforms,
@@ -256,11 +256,15 @@ const PLANET_FRAG = /* glsl */ `
   uniform sampler2D uPMap; uniform float uCapSin;
   #endif
   // height per pixel for colour and coastlines (vertex heights would follow the mesh grid)
+  // Mip level from the pixel footprint on the sphere: distant planets read prefiltered heights
+  // instead of aliasing into sparkly noise. Manual LOD keeps the longitude seam clean.
+  uniform float uHW, uPW;
+  float lodG, lodP;
   float hAt(vec3 p){
-    float hg=textureLod(uHMap,sphereUv(p),0.0).r;
+    float hg=textureLod(uHMap,sphereUv(p),lodG).r;
     #ifdef PATCH
     vec2 q=vec2(p.x,p.z)/uCapSin;
-    float hp=textureLod(uPMap,q*0.5+0.5,0.0).r;
+    float hp=textureLod(uPMap,q*0.5+0.5,lodP).r;
     return mix(hp,hg,smoothstep(0.78,0.96,length(q)));
     #else
     return hg;
@@ -275,11 +279,17 @@ const PLANET_FRAG = /* glsl */ `
     vec3 p0=normalize(vP);
     vec3 t1=normalize(cross(abs(p0.y)<0.99?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0),p0));
     vec3 t2=cross(p0,t1);
+    float fp=length(fwidth(p0));                      // radians covered by one pixel
+    lodG=log2(max(fp*uHW/6.2832,1.0));
     #ifdef PATCH
+    lodP=log2(max(fp*uPW/(2.0*uCapSin),1.0));
     float e=mix(0.0007,0.003,smoothstep(0.78,0.96,length(vec2(p0.x,p0.z)/uCapSin)));
     #else
+    lodP=0.0;
     float e=0.003;
     #endif
+    e=max(e,fp*1.5);
+    float far=smoothstep(0.0006,0.004,fp);           // 0 close up, 1 when the planet is small
     float h=hAt(p0);
     float land=uKind<0.5?1.0:0.0;
     float h0=uKind<0.5?max(h,0.0):h;
@@ -299,10 +309,12 @@ const PLANET_FRAG = /* glsl */ `
         albedo=mix(cDeep,cShallow,smoothstep(-0.3,0.0,h));
         // small waves break the sun glint into sparkles
         vec3 wv=tri(vP,48.0).gba-0.5;
-        N=normalize(S+0.11*wv);
+        N=normalize(S+0.11*wv*(1.0-far));
       } else {
-        albedo=mix(cLow,cMid,smoothstep(0.0,0.25,h));
-        albedo=mix(albedo,cHigh,smoothstep(0.25,0.6,h));
+        float region=tri(vP,0.9).b;                    // large-scale regions: darker basins vs pale uplands
+        vec3 low=mix(cLow,cLow*vec3(0.75,0.95,0.9),smoothstep(0.35,0.65,region));
+        albedo=mix(low,cMid,smoothstep(0.02,0.3,h));
+        albedo=mix(albedo,cHigh,smoothstep(0.3,0.7,h));
         float slope=1.0-max(dot(nl,p0),0.0);
         albedo=mix(albedo,cPeak,smoothstep(1.05,1.3,h+grain*0.1)*(1.0-smoothstep(0.2,0.45,slope)));
       }
@@ -313,7 +325,7 @@ const PLANET_FRAG = /* glsl */ `
       float bands=texture(uNoise,vec2(vP.y*0.35+uSeed.x*0.01,0.37)).b;
       albedo*=0.8+bands*0.4;
     }
-    albedo*=0.88+grain*0.24;
+    albedo*=0.88+mix(grain,0.5,far)*0.24;
     float ndl=dot(N,uSun);
     float lit=max(ndl,0.0);
     float sdot=dot(S,uSun);
@@ -329,7 +341,7 @@ const PLANET_FRAG = /* glsl */ `
       float night=smoothstep(0.02,-0.25,sdot);
       float cluster=smoothstep(0.45,0.7,tri(vP,0.7).a);
       float dots=pow(max(tri(vP,18.0).r*2.0-1.0,0.0),5.0)*14.0;
-      col+=cLights*dots*cluster*night*smoothstep(0.35,0.0,h);
+      col+=cLights*mix(dots,0.12,far)*cluster*night*smoothstep(0.35,0.0,h);
     }
     gl_FragColor=vec4(col,1.0);
     #include <tonemapping_fragment>
@@ -346,7 +358,7 @@ export function makeDetailedPlanet(renderer: WebGLRenderer, o: PlanetOpts) {
       uHMap: { value: hmap },
       uR: { value: o.radius }, uAmp: { value: o.amp }, uKind: { value: o.kind }, uSeed: { value: new Vector3(...o.seed) },
       uSun: { value: o.sun }, uTime: { value: 0 }, uNormalM: { value: new Matrix3() },
-      uNoise: { value: noiseTexture() }, uCapCos: { value: -2 },
+      uNoise: { value: noiseTexture() }, uCapCos: { value: -2 }, uHW: { value: o.mapW }, uPW: { value: 1 },
       cDeep: col('deep'), cShallow: col('shallow'), cLow: col('low'), cMid: col('mid'), cHigh: col('high'), cPeak: col('peak'),
       cAmb: col('amb'), cFill: col('fill'), cSun: col('sun'), cLights: col('lights'),
     },
@@ -384,16 +396,19 @@ export function makeClouds(renderer: WebGLRenderer, o: { radius: number; segs: n
   const cmap = bake(renderer, o.mapW, o.mapW / 2, /* glsl */ `
     uniform vec3 uSeed;
     float value(vec3 p){
-      vec3 q=p*2.2+uSeed;
-      vec3 w=vec3(fbm(q,3),fbm(q+vec3(4.1,7.3,2.2),3),fbm(q+vec3(8.7,1.9,5.5),3));
-      float d=fbm(q*1.6+w*1.4,5);
-      d+=0.18*sin(abs(p.y)*14.0+w.x*3.0);            // jet-stream bands
-      d+=snoise(p*36.0+w*2.0+uSeed)*0.09;            // wisps
+      // large swirled weather systems, stretched along latitude; small scales stay weak so the
+      // threshold does not break the field into spots
+      vec3 q=p*1.6+uSeed;
+      vec3 w=vec3(fbm(q*0.7,3),fbm(q*0.7+vec3(4.1,7.3,2.2),3),fbm(q*0.7+vec3(8.7,1.9,5.5),3));
+      vec3 qs=vec3(q.x,q.y*2.0,q.z);
+      float d=fbm(qs*0.55+w*1.9,4)*1.2;
+      d+=fbm(qs*2.2+w*2.5,3)*0.1;
+      d+=snoise(p*30.0+w*3.0+uSeed)*0.03;
       return d;
     }`, { uSeed: { value: seed } })
   const mat = new ShaderMaterial({
     uniforms: {
-      uMap: { value: cmap }, uSun: { value: o.sun }, uSeed: { value: seed }, uNoise: { value: noiseTexture() },
+      uMap: { value: cmap }, uSun: { value: o.sun }, uSeed: { value: seed }, uNoise: { value: noiseTexture() }, uCW: { value: o.mapW },
       uTint: { value: new Color(o.tint) }, uOpacity: { value: o.opacity }, uNormalM: { value: new Matrix3() },
     },
     vertexShader: /* glsl */ `
@@ -402,12 +417,19 @@ export function makeClouds(renderer: WebGLRenderer, o: { radius: number; segs: n
     fragmentShader: /* glsl */ `
       ${TRI}
       ${UV}
-      uniform sampler2D uMap; uniform vec3 uSun, uSeed, uTint; uniform float uOpacity; uniform mat3 uNormalM;
+      uniform sampler2D uMap; uniform vec3 uSun, uSeed, uTint; uniform float uOpacity, uCW; uniform mat3 uNormalM;
       varying vec3 vP; varying vec3 vW;
       void main(){
-        float d=textureLod(uMap, sphereUv(vP), 0.0).r;
-        vec4 nz=tri(vP,9.0); d+=(nz.r-0.5)*0.1+(tri(vP,28.0).g-0.5)*0.05;  // close-up detail
-        float c=smoothstep(0.12,0.46,d);
+        // Prefiltered by distance: soft cloud masses from afar, wisps only close up.
+        float fp=length(fwidth(vP));
+        float d=textureLod(uMap, sphereUv(vP), log2(max(fp*uCW/6.2832,1.0))).r;
+        float near=1.0-smoothstep(0.0012,0.006,fp);
+        d+=((tri(vP,9.0).r-0.5)*0.08+(tri(vP,28.0).g-0.5)*0.04)*near*smoothstep(0.0,0.2,d);
+        float far=1.0-near;
+        // from afar only the dense cores remain and they turn translucent, so oceans and land read
+        float c=smoothstep(0.02+0.16*far,0.42+0.12*far,d);
+        c*=c*(3.0-2.0*c);
+        c*=1.0-0.45*far;
         vec3 S=normalize(uNormalM*vP);
         vec3 V=normalize(cameraPosition-vW);
         float sd=dot(S,uSun);
@@ -490,7 +512,7 @@ export function makeHomePatch(renderer: WebGLRenderer, planet: Mesh, o: { capDeg
   g.boundingSphere = new Sphere(new Vector3(0, r0 * Math.cos(cap), 0), r0 * capSin * 1.1)
 
   const mat = new ShaderMaterial({
-    uniforms: { ...base.uniforms, uPMap: { value: pmap }, uCapSin: { value: capSin } },
+    uniforms: { ...base.uniforms, uPMap: { value: pmap }, uCapSin: { value: capSin }, uPW: { value: o.mapSize } },
     defines: { PATCH: 1 },
     vertexShader: /* glsl */ `
       ${UV}

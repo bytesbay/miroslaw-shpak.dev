@@ -68,7 +68,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   const SEG_H = weak ? 128 : 256, SEG_D = weak ? 96 : 192
   const homeMesh = makeDetailedPlanet(renderer, {
     mapW: weak ? 1024 : 2048, radius: R_H, kind: 0, segs: SEG_H, amp: 0.016, seed: [3.1, 7.4, 1.9], sun: SUN,
-    colors: { deep: '#070d22', shallow: '#18305e', low: '#353646', mid: '#45435a', high: '#5a5370', peak: '#c9c4dc', amb: '#221d36', fill: '#4b55c8', sun: '#fff1e4', lights: '#ffb35c' },
+    colors: { deep: '#040a1c', shallow: '#123060', low: '#232a2b', mid: '#353240', high: '#4f4655', peak: '#cfcadc', amb: '#221d36', fill: '#4b55c8', sun: '#fff1e4', lights: '#ffb35c' },
   })
   const homeLo = new Mesh(sphereCube(48), homeMesh.material)
   homeLo.geometry.boundingSphere!.radius = R_H * 1.05

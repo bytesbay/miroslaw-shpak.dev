@@ -44,7 +44,7 @@ export function makeAtmosphere(radius: number, color: string, sun: Vector3, stre
           float tHit = -b - sqrt(dP);
           vec3 n = normalize(oc + rd * tHit);
           float mu = max(dot(-rd, n), 0.03);
-          tau = min(uH / mu, Lg * 1.4);              // Chapman-style slant path
+          tau = min(uH / mu, Lg * 1.4) * 0.55;       // Chapman-style slant path, kept light over the disc
           P = oc + rd * mix(t0, tHit, 0.7);
         } else {
           float tc = clamp(-b, t0, t1);
