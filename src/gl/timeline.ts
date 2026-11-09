@@ -69,10 +69,11 @@ const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x 
 const easeSine = (x: number) => -(Math.cos(Math.PI * x) - 1) / 2
 
 // Direction slerp with length lerp, so camera offsets swing around instead of cutting through.
+const _sa = new Vector3(), _sb = new Vector3(), _na = new Vector3(), _nb = new Vector3()
 function swing(a: Vector3, b: Vector3, w: number, out: Vector3) {
   const la = a.length(), lb = b.length()
   if (la < 1e-6 || lb < 1e-6) return out.lerpVectors(a, b, w)
-  const da = a.clone().divideScalar(la), db = b.clone().divideScalar(lb)
+  const da = _sa.copy(a).divideScalar(la), db = _sb.copy(b).divideScalar(lb)
   const d = MathUtils.clamp(da.dot(db), -1, 1)
   const om = Math.acos(d)
   if (om < 1e-3) out.lerpVectors(da, db, w)
@@ -84,7 +85,7 @@ function swing(a: Vector3, b: Vector3, w: number, out: Vector3) {
 }
 
 function slerpDir(a: Vector3, b: Vector3, w: number, out: Vector3) {
-  return swing(a.clone().normalize(), b.clone().normalize(), w, out).normalize()
+  return swing(_na.copy(a).normalize(), _nb.copy(b).normalize(), w, out).normalize()
 }
 
 function blend(a: Pose, b: Pose, w: number, out: Pose) {
@@ -110,12 +111,13 @@ const bez = (a: Vector3, b: Vector3, c: Vector3, d: Vector3, s: number, out: Vec
     .addScaledVector(c, 3 * m * s * s)
     .addScaledVector(d, s * s * s)
 }
+const _bt1 = new Vector3(), _bt2 = new Vector3()
 const bezTan = (a: Vector3, b: Vector3, c: Vector3, d: Vector3, s: number, out: Vector3) => {
   const m = 1 - s
   return out
     .subVectors(b, a).multiplyScalar(3 * m * m)
-    .addScaledVector(new Vector3().subVectors(c, b), 6 * m * s)
-    .addScaledVector(new Vector3().subVectors(d, c), 3 * s * s)
+    .addScaledVector(_bt1.subVectors(c, b), 6 * m * s)
+    .addScaledVector(_bt2.subVectors(d, c), 3 * s * s)
     .normalize()
 }
 
@@ -269,6 +271,7 @@ export const capturePoint = (s: number, out = new Vector3()) => bez(CAP_A, CAP_B
 
 /* ---------------------------------------------------------------- evaluation */
 const tmpA = newPose(), tmpB = newPose()
+const _t1 = new Vector3(), _t2 = new Vector3(), _t3 = new Vector3()
 const _v = new Vector3(), _w = new Vector3()
 
 export function evaluate(t: number, out: Pose): Pose {
@@ -286,7 +289,7 @@ export function evaluate(t: number, out: Pose): Pose {
     out.up.copy(slerpDir(K[2].up, UP_D, a, _w))
     out.sp.copy(K[2].sp).addScaledVector(K[2].f, 25 * easeSine(a))
     out.sp.addScaledVector(DIR_D, K[3].sp.distanceTo(P_TURN) * Math.pow(b, 2.4))
-    const chase = chaseCo(fwd, out.up, 15, new Vector3())
+    const chase = chaseCo(fwd, out.up, 15, _t1)
     swing(K[2].co, chase, easeInOut(a), out.co)
     out.co.lerp(K[3].co, smooth(0.6, 1, u))
     out.to.lerpVectors(K[2].to, K[3].to, easeInOut(a))
@@ -308,10 +311,10 @@ export function evaluate(t: number, out: Pose): Pose {
     out.warp = 1 - smooth(0, 0.36, u)
     const fov = u < 0.46 ? MathUtils.lerp(K[3].fov, 33, smooth(0, 0.46, u)) : MathUtils.lerp(33, K[4].fov, smooth(0.46, 1, u))
     const dist = 15 * Math.tan(MathUtils.degToRad(K[3].fov / 2)) / Math.tan(MathUtils.degToRad(fov / 2))
-    const chase = chaseCo(out.f, out.up, dist, new Vector3())
-    const toPlanet = new Vector3().subVectors(C_D, out.sp).normalize()
+    const chase = chaseCo(out.f, out.up, dist, _t1)
+    const toPlanet = _t2.subVectors(C_D, out.sp).normalize()
     const look = 0.62 * smooth(0.08, 0.42, u)
-    const chaseTo = new Vector3().copy(out.f).multiplyScalar(1 - look).addScaledVector(toPlanet, look).normalize().multiplyScalar(80)
+    const chaseTo = _t3.copy(out.f).multiplyScalar(1 - look).addScaledVector(toPlanet, look).normalize().multiplyScalar(80)
     const w = smooth(0.5, 1, u)
     swing(chase, K[4].co, easeInOut(w), out.co)
     out.to.lerpVectors(chaseTo, K[4].to, easeInOut(w))

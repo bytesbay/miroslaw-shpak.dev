@@ -167,9 +167,11 @@ function scrollTick(dt: number) {
     const k = 1 - Math.pow(1 - (snapping ? 0.07 : 0.11), dt * 60)
     cur += (target - cur) * k
     if (Math.abs(target - cur) < 0.25) cur = target
-    if (Math.abs(cur - scrollY) > 0.5) {
-      window.scrollTo(0, cur)
-      expected = cur
+    const dpr = window.devicePixelRatio || 1
+    const yw = Math.round(cur * dpr) / dpr
+    if (Math.abs(yw - scrollY) > 0.25) {
+      window.scrollTo(0, yw)
+      expected = yw
     }
     if (!snapping && t - lastInput > 170 && Math.abs(target - cur) < vh * 0.6) {
       const s = snapTarget(target)
@@ -316,7 +318,7 @@ function updatePanels(y: number, t: number, dt: number) {
       const d = y < a0 ? a0 - y : y > a1 && !last ? y - a1 : 0
       const h = c.id === 'career' ? (c.len * vh) / roles.length / 2 : (c.len * vh) / 2
       const v = c.id === 'hello' ? 1 - smooth(0.06 * vh, 0.55 * vh, d) : 1 - smooth(h * 0.5 + 0.08 * vh, h * 0.5 + 0.72 * vh, d)
-      setLook(c.panel, v, y < a0 ? 1 : -1, 36, true)
+      setLook(c.panel, v, y < a0 ? 1 : -1, 36, false)
       c.el.classList.toggle('is-hidden', v < 0.002)
     }
     const career = chapters.find((c) => c.id === 'career')!
@@ -401,28 +403,42 @@ function init() {
     else goTo(0, true)
   }
   let last = now()
+  let lastT = -1, lastMx = 0, lastMy = 0, idleSince = now(), skip = false, glDt = 0
   const loop = () => {
     const t0 = now()
-    const dt = (t0 - last) / 1000
+    const dt = Math.min((t0 - last) / 1000, 1 / 20)
     last = t0
     if (FX) scrollTick(dt)
     const y = FX && smoothWheel && sticky ? cur : scrollY
     const t = keyT(y)
     if (FX) updatePanels(y, t, dt)
     if (warpOut && gl) warpOut.textContent = gl.warp.toFixed(2)
-    gl?.frame(dt, t, mx, my)
+    // full frame rate while anything moves, 30 fps when the scene is just idling
+    const moving = Math.abs(t - lastT) > 1e-4 || mx !== lastMx || my !== lastMy
+    if (moving) idleSince = t0
+    lastT = t; lastMx = mx; lastMy = my
+    glDt += dt
+    skip = t0 - idleSince > 1500 ? !skip : false
+    if (gl && !skip) { gl.frame(glDt, t, mx, my); glDt = 0 }
     if (FX) requestAnimationFrame(loop)
   }
   requestAnimationFrame(loop)
 
   if (FX) {
+    const bar = document.querySelector<HTMLElement>('.loader-bar')
+    const progress = (p: number) => bar?.style.setProperty('--p', String(Math.max(0.04, p)))
+    const done = () => html.classList.add('loaded')
+    setTimeout(done, 9000) // never keep the page behind the loader
+    progress(0.04)
     const boot = () =>
       import('./gl/index')
-        .then((m) => m.start(document.getElementById('gl') as HTMLCanvasElement, () => html.classList.add('gl-ready')))
+        .then((m) => { progress(0.08); return m.start(document.getElementById('gl') as HTMLCanvasElement, () => { html.classList.add('gl-ready'); done() }, progress) })
         .then((g) => { gl = g })
-        .catch((err) => { console.warn('3D disabled:', err); html.classList.replace('fx', 'nofx'); measure() })
-    if (document.readyState === 'complete') setTimeout(boot, 30)
-    else addEventListener('load', () => setTimeout(boot, 30), { once: true })
+        .catch((err) => { console.warn('3D disabled:', err); done(); html.classList.replace('fx', 'nofx'); measure() })
+    // start after the page itself has loaded, so 3D setup never competes with the first render
+    const go = () => ('requestIdleCallback' in window ? (window as any).requestIdleCallback(boot, { timeout: 600 }) : setTimeout(boot, 30))
+    if (document.readyState === 'complete') go()
+    else addEventListener('load', go, { once: true })
   }
 }
 

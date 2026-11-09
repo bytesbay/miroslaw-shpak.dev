@@ -17,6 +17,7 @@
       } catch (e) { ok = false }
       if (/[?&]nofx/.test(location.search)) ok = false
       d.className += ok ? ' fx' : ' nofx'
+      if (ok && !matchMedia('(pointer: coarse)').matches) d.className += ' preload'
       if ('scrollRestoration' in history && ok) history.scrollRestoration = 'manual'
     })()
   </script>
@@ -25,6 +26,12 @@
 <body>
   <a class="skip" href="#career">Skip to career</a>
   <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="loader" aria-hidden="true">
+    <div class="loader-box">
+      <div class="loader-text">Launching<span>.</span><span>.</span><span>.</span></div>
+      <div class="loader-bar"><i></i></div>
+    </div>
+  </div>
   <div class="sky" aria-hidden="true"></div>
 
   <header class="topbar">

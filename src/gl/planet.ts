@@ -1,6 +1,7 @@
 import {
   BufferGeometry, BufferAttribute, Mesh, ShaderMaterial, Color, Vector3, Matrix3, Sphere, WebGLRenderer, WebGLRenderTarget,
   HalfFloatType, RedFormat, LinearFilter, RepeatWrapping, ClampToEdgeWrapping, Scene, OrthographicCamera, PlaneGeometry, Texture,
+  DataTexture, RGBAFormat, LinearMipmapLinearFilter,
 } from 'three'
 
 /*
@@ -117,6 +118,58 @@ float craters(vec3 x){
 }
 `
 
+/*
+  Small tileable value-noise texture (4 independent channels). Per-pixel detail (grain, waves,
+  city lights, cloud wisps) samples it instead of evaluating simplex noise, which was the main
+  fragment cost.
+*/
+let noiseTex: DataTexture | null = null
+export function noiseTexture() {
+  if (noiseTex) return noiseTex
+  const N = 128
+  const data = new Uint8Array(N * N * 4)
+  const lattice = (g: number, seed: number) => {
+    const a = new Float32Array(g * g)
+    let x = seed * 9301 + 49297
+    for (let i = 0; i < a.length; i++) { x = (x * 9301 + 49297) % 233280; a[i] = x / 233280 }
+    return a
+  }
+  const sample = (a: Float32Array, g: number, u: number, v: number) => {
+    const x = u * g, y = v * g
+    const xi = Math.floor(x), yi = Math.floor(y)
+    const fx = x - xi, fy = y - yi
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy)
+    const at = (i: number, j: number) => a[((j % g + g) % g) * g + ((i % g + g) % g)]
+    const top = at(xi, yi) + (at(xi + 1, yi) - at(xi, yi)) * sx
+    const bot = at(xi, yi + 1) + (at(xi + 1, yi + 1) - at(xi, yi + 1)) * sx
+    return top + (bot - top) * sy
+  }
+  for (let c = 0; c < 4; c++) {
+    const l1 = lattice(16, c * 3 + 1), l2 = lattice(32, c * 3 + 2)
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const u = i / N, v = j / N
+      const n = sample(l1, 16, u, v) * 0.65 + sample(l2, 32, u, v) * 0.35
+      data[(j * N + i) * 4 + c] = Math.round(n * 255)
+    }
+  }
+  const t = new DataTexture(data, N, N, RGBAFormat)
+  t.wrapS = t.wrapT = RepeatWrapping
+  t.magFilter = LinearFilter
+  t.minFilter = LinearMipmapLinearFilter
+  t.generateMipmaps = true
+  t.needsUpdate = true
+  noiseTex = t
+  return t
+}
+
+const TRI = /* glsl */ `
+uniform sampler2D uNoise;
+vec4 tri(vec3 p, float s){
+  vec3 w=abs(p); w*=w; w*=w; w/=(w.x+w.y+w.z);
+  return texture(uNoise,p.yz*s)*w.x+texture(uNoise,p.zx*s)*w.y+texture(uNoise,p.xy*s)*w.z;
+}
+`
+
 // equirectangular lookup shared by the bake pass and the planet shaders
 const UV = /* glsl */ `
 vec2 sphereUv(vec3 p){ return vec2(atan(p.z,p.x)*0.15915494+0.5, asin(clamp(p.y,-1.0,1.0))*0.31830989+0.5); }
@@ -127,7 +180,7 @@ vec2 sphereUv(vec3 p){ return vec2(atan(p.z,p.x)*0.15915494+0.5, asin(clamp(p.y,
   which dropped Chrome to ~26 fps. Now they are evaluated once into an equirectangular half-float
   texture, and the per-frame shaders only sample it.
 */
-function bake(renderer: WebGLRenderer, w: number, h: number, body: string, uniforms: Record<string, { value: unknown }>): Texture {
+function bake(renderer: WebGLRenderer, w: number, h: number, body: string, uniforms: Record<string, { value: unknown }>, main?: string): Texture {
   const rt = new WebGLRenderTarget(w, h, {
     type: HalfFloatType, format: RedFormat, minFilter: LinearFilter, magFilter: LinearFilter,
     wrapS: RepeatWrapping, wrapT: ClampToEdgeWrapping, depthBuffer: false, generateMipmaps: false,
@@ -140,9 +193,9 @@ function bake(renderer: WebGLRenderer, w: number, h: number, body: string, unifo
       ${body}
       varying vec2 vUv;
       void main(){
-        float lon=(vUv.x-0.5)*6.2831853, lat=(vUv.y-0.5)*3.1415927;
+        ${main ?? `float lon=(vUv.x-0.5)*6.2831853, lat=(vUv.y-0.5)*3.1415927;
         vec3 p=vec3(cos(lat)*cos(lon), sin(lat), cos(lat)*sin(lon));
-        gl_FragColor=vec4(value(p),0.0,0.0,1.0);
+        gl_FragColor=vec4(value(p),0.0,0.0,1.0);`}
       }`,
   })
   const scene = new Scene()
@@ -195,6 +248,94 @@ export type PlanetOpts = {
   colors: Record<string, string>
 }
 
+const PLANET_FRAG = /* glsl */ `
+  ${TRI}
+  ${UV}
+  uniform sampler2D uHMap;
+  #ifdef PATCH
+  uniform sampler2D uPMap; uniform float uCapSin;
+  #endif
+  // height per pixel for colour and coastlines (vertex heights would follow the mesh grid)
+  float hAt(vec3 p){
+    float hg=textureLod(uHMap,sphereUv(p),0.0).r;
+    #ifdef PATCH
+    vec2 q=vec2(p.x,p.z)/uCapSin;
+    float hp=textureLod(uPMap,q*0.5+0.5,0.0).r;
+    return mix(hp,hg,smoothstep(0.78,0.96,length(q)));
+    #else
+    return hg;
+    #endif
+  }
+  uniform float uKind, uR, uAmp; uniform vec3 uSun; uniform vec3 uSeed; uniform mat3 uNormalM;
+  uniform vec3 cDeep, cShallow, cLow, cMid, cHigh, cPeak, cAmb, cFill, cSun, cLights;
+  varying vec3 vP; varying vec3 vL; varying float vH; varying vec3 vW;
+  void main(){
+    // Normal from the height texture gradient, per pixel: lighting shows the relief at texture
+    // resolution instead of mesh facets (those read as square "pixels" at mid distance).
+    vec3 p0=normalize(vP);
+    vec3 t1=normalize(cross(abs(p0.y)<0.99?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0),p0));
+    vec3 t2=cross(p0,t1);
+    #ifdef PATCH
+    float e=mix(0.0007,0.003,smoothstep(0.78,0.96,length(vec2(p0.x,p0.z)/uCapSin)));
+    #else
+    float e=0.003;
+    #endif
+    float h=hAt(p0);
+    float land=uKind<0.5?1.0:0.0;
+    float h0=uKind<0.5?max(h,0.0):h;
+    float h1=hAt(normalize(p0+t1*e)), h2=hAt(normalize(p0+t2*e));
+    if(uKind<0.5){ h1=max(h1,0.0); h2=max(h2,0.0); }
+    float k=uAmp/e;
+    vec3 nl=normalize(p0-k*((h1-h0)*t1+(h2-h0)*t2));
+    vec3 N=normalize(uNormalM*nl);
+    vec3 S=normalize(uNormalM*p0);
+    vec3 V=normalize(cameraPosition-vW);
+    vec4 nz=tri(vP+uSeed*0.01,5.6);
+    float grain=nz.r;
+    vec3 albedo; float water=0.0;
+    if(uKind<0.5){
+      if(h<0.0){
+        water=1.0;
+        albedo=mix(cDeep,cShallow,smoothstep(-0.3,0.0,h));
+        // small waves break the sun glint into sparkles
+        vec3 wv=tri(vP,48.0).gba-0.5;
+        N=normalize(S+0.11*wv);
+      } else {
+        albedo=mix(cLow,cMid,smoothstep(0.0,0.25,h));
+        albedo=mix(albedo,cHigh,smoothstep(0.25,0.6,h));
+        float slope=1.0-max(dot(nl,p0),0.0);
+        albedo=mix(albedo,cPeak,smoothstep(1.05,1.3,h+grain*0.1)*(1.0-smoothstep(0.2,0.45,slope)));
+      }
+    } else {
+      albedo=mix(cLow,cMid,smoothstep(-0.45,0.0,h));
+      albedo=mix(albedo,cHigh,smoothstep(0.0,0.35,h));
+      albedo=mix(albedo,cPeak,smoothstep(0.32,0.6,h)*0.8);
+      float bands=texture(uNoise,vec2(vP.y*0.35+uSeed.x*0.01,0.37)).b;
+      albedo*=0.8+bands*0.4;
+    }
+    albedo*=0.88+grain*0.24;
+    float ndl=dot(N,uSun);
+    float lit=max(ndl,0.0);
+    float sdot=dot(S,uSun);
+    float terminator=smoothstep(-0.12,0.25,sdot);
+    vec3 col=albedo*(cSun*lit*terminator*1.25+cFill*max(-ndl,0.0)*0.35+cAmb);
+    if(water>0.5){
+      vec3 H=normalize(uSun+V);
+      float nh=max(dot(N,H),0.0);
+      float spec=(pow(nh,600.0)*0.9+pow(nh,40.0)*0.05)*terminator;
+      float fres=pow(1.0-max(dot(N,V),0.0),5.0);
+      col+=cSun*spec+cShallow*fres*0.5*terminator;
+    } else if(uKind<0.5 && sdot<0.02){
+      float night=smoothstep(0.02,-0.25,sdot);
+      float cluster=smoothstep(0.45,0.7,tri(vP,0.7).a);
+      float dots=pow(max(tri(vP,18.0).r*2.0-1.0,0.0),5.0)*14.0;
+      col+=cLights*dots*cluster*night*smoothstep(0.35,0.0,h);
+    }
+    gl_FragColor=vec4(col,1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`
+
 export function makeDetailedPlanet(renderer: WebGLRenderer, o: PlanetOpts) {
   const col = (k: string) => ({ value: new Color(o.colors[k]) })
   const hmap = bake(renderer, o.mapW, o.mapW / 2, `${HEIGHT}\nfloat value(vec3 p){ return height(p); }`, {
@@ -205,12 +346,13 @@ export function makeDetailedPlanet(renderer: WebGLRenderer, o: PlanetOpts) {
       uHMap: { value: hmap },
       uR: { value: o.radius }, uAmp: { value: o.amp }, uKind: { value: o.kind }, uSeed: { value: new Vector3(...o.seed) },
       uSun: { value: o.sun }, uTime: { value: 0 }, uNormalM: { value: new Matrix3() },
+      uNoise: { value: noiseTexture() }, uCapCos: { value: -2 },
       cDeep: col('deep'), cShallow: col('shallow'), cLow: col('low'), cMid: col('mid'), cHigh: col('high'), cPeak: col('peak'),
       cAmb: col('amb'), cFill: col('fill'), cSun: col('sun'), cLights: col('lights'),
     },
     vertexShader: /* glsl */ `
       ${UV}
-      uniform sampler2D uHMap; uniform float uR, uAmp, uKind;
+      uniform sampler2D uHMap; uniform float uR, uAmp, uKind, uCapCos;
       varying vec3 vP; varying vec3 vL; varying float vH; varying vec3 vW;
       void main(){
         vec3 p=normalize(position);
@@ -218,73 +360,18 @@ export function makeDetailedPlanet(renderer: WebGLRenderer, o: PlanetOpts) {
         vH=h; vP=p;
         float d = uKind < 0.5 ? max(h,0.0) : h;
         vec3 L=p*uR*(1.0+d*uAmp);
+        if(p.y>uCapCos) L*=0.97;   // sink under the high-detail patch
         vL=L;
         vec4 w=modelMatrix*vec4(L,1.0); vW=w.xyz;
         gl_Position=projectionMatrix*viewMatrix*w;
       }`,
-    fragmentShader: /* glsl */ `
-      ${NOISE}
-      uniform float uKind, uR; uniform vec3 uSun; uniform vec3 uSeed; uniform mat3 uNormalM;
-      uniform vec3 cDeep, cShallow, cLow, cMid, cHigh, cPeak, cAmb, cFill, cSun, cLights;
-      varying vec3 vP; varying vec3 vL; varying float vH; varying vec3 vW;
-      void main(){
-        // faceted normal from derivatives (model space, good precision), then to world
-        vec3 nl=normalize(cross(dFdx(vL),dFdy(vL)));
-        if(dot(nl,vL)<0.0) nl=-nl;
-        vec3 N=normalize(uNormalM*nl);
-        vec3 S=normalize(uNormalM*normalize(vP));
-        vec3 V=normalize(cameraPosition-vW);
-        float h=vH;
-        float grain=snoise(vP*90.0+uSeed)*0.5+0.5;
-        vec3 albedo; float water=0.0;
-        if(uKind<0.5){
-          if(h<0.0){
-            water=1.0;
-            albedo=mix(cDeep,cShallow,smoothstep(-0.3,0.0,h));
-            // small waves break the sun glint into sparkles
-            vec3 wp=vP*700.0+uSeed;
-            N=normalize(S+0.05*vec3(snoise(wp),snoise(wp+17.3),snoise(wp+41.7)));
-          } else {
-            albedo=mix(cLow,cMid,smoothstep(0.0,0.25,h));
-            albedo=mix(albedo,cHigh,smoothstep(0.25,0.6,h));
-            float slope=1.0-max(dot(nl,normalize(vL)),0.0);
-            albedo=mix(albedo,cPeak,smoothstep(1.05,1.3,h+grain*0.1)*(1.0-smoothstep(0.2,0.45,slope)));
-          }
-        } else {
-          albedo=mix(cLow,cMid,smoothstep(-0.45,0.0,h));
-          albedo=mix(albedo,cHigh,smoothstep(0.0,0.35,h));
-          albedo=mix(albedo,cPeak,smoothstep(0.32,0.6,h)*0.8);
-          float bands=snoise(vec3(vP.y*7.0,vP.x*0.6,vP.z*0.6)+uSeed)*0.5+0.5;
-          albedo*=0.85+bands*0.3;
-        }
-        albedo*=0.88+grain*0.24;
-        float ndl=dot(N,uSun);
-        float lit=max(ndl,0.0);
-        float terminator=smoothstep(-0.12,0.25,dot(S,uSun));
-        vec3 col=albedo*(cSun*lit*terminator*1.25+cFill*max(-ndl,0.0)*0.35+cAmb);
-        if(water>0.5){
-          vec3 H=normalize(uSun+V);
-          float nh=max(dot(N,H),0.0);
-          float spec=(pow(nh,600.0)*0.9+pow(nh,40.0)*0.05)*terminator;
-          float fres=pow(1.0-max(dot(N,V),0.0),5.0);
-          col+=cSun*spec+cShallow*fres*0.5*terminator;
-        }
-        if(uKind<0.5 && water<0.5){
-          float night=smoothstep(0.02,-0.25,dot(S,uSun));
-          float cluster=smoothstep(0.15,0.6,snoise(vP*9.0+uSeed*3.0));
-          float dots=pow(max(snoise(vP*260.0),0.0),5.0)*8.0;
-          col+=cLights*dots*cluster*night*smoothstep(0.35,0.0,h);
-        }
-        gl_FragColor=vec4(col,1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
+    fragmentShader: PLANET_FRAG,
   })
   const mesh = new Mesh(sphereCube(Math.min(o.segs, 32)), mat)
   mesh.onBeforeRender = bindRotation
   const fix = () => { mesh.geometry.boundingSphere!.radius = o.radius * (1 + o.amp * 1.5) }
   fix()
-  sphereCubeAsync(o.segs).then((g) => { mesh.geometry.dispose(); mesh.geometry = g; fix() })
+  mesh.userData.ready = sphereCubeAsync(o.segs).then((g) => { mesh.geometry.dispose(); mesh.geometry = g; fix() })
   return mesh
 }
 
@@ -306,20 +393,20 @@ export function makeClouds(renderer: WebGLRenderer, o: { radius: number; segs: n
     }`, { uSeed: { value: seed } })
   const mat = new ShaderMaterial({
     uniforms: {
-      uMap: { value: cmap }, uSun: { value: o.sun }, uSeed: { value: seed },
+      uMap: { value: cmap }, uSun: { value: o.sun }, uSeed: { value: seed }, uNoise: { value: noiseTexture() },
       uTint: { value: new Color(o.tint) }, uOpacity: { value: o.opacity }, uNormalM: { value: new Matrix3() },
     },
     vertexShader: /* glsl */ `
       varying vec3 vP; varying vec3 vW;
       void main(){ vP=normalize(position); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
     fragmentShader: /* glsl */ `
-      ${NOISE}
+      ${TRI}
       ${UV}
       uniform sampler2D uMap; uniform vec3 uSun, uSeed, uTint; uniform float uOpacity; uniform mat3 uNormalM;
       varying vec3 vP; varying vec3 vW;
       void main(){
         float d=textureLod(uMap, sphereUv(vP), 0.0).r;
-        d+=snoise(vP*140.0+uSeed)*0.05+snoise(vP*420.0+uSeed*1.7)*0.025;  // close-up detail
+        vec4 nz=tri(vP,9.0); d+=(nz.r-0.5)*0.1+(tri(vP,28.0).g-0.5)*0.05;  // close-up detail
         float c=smoothstep(0.12,0.46,d);
         vec3 S=normalize(uNormalM*vP);
         vec3 V=normalize(cameraPosition-vW);
@@ -340,4 +427,93 @@ export function makeClouds(renderer: WebGLRenderer, o: { radius: number; segs: n
   mesh.onBeforeRender = bindRotation
   mesh.renderOrder = 2
   return mesh
+}
+
+/*
+  High-detail patch around the north pole, where the story starts. The global sphere is light;
+  this cap carries ~4x denser geometry and an extra bake with fine relief, densest under the
+  shuttle and fading into the global heights at its edge. The global mesh sinks under it.
+*/
+export function makeHomePatch(renderer: WebGLRenderer, planet: Mesh, o: { capDeg: number; rings: number; sectors: number; mapSize: number; seed: [number, number, number] }) {
+  const cap = (o.capDeg * Math.PI) / 180
+  const capSin = Math.sin(cap)
+  const base = planet.material as ShaderMaterial
+  const pmap = bake(renderer, o.mapSize, o.mapSize, /* glsl */ `
+    ${HEIGHT}
+    uniform float uCapSin;
+    float value(vec3 pp){
+      vec2 q=(vec2(pp.x,pp.z)); // unused, the bake uses the polar projection below
+      return 0.0;
+    }`, { uKind: { value: 0 }, uSeed: { value: new Vector3(...o.seed) }, uCapSin: { value: capSin } }, /* glsl */ `
+      vec2 q=(vUv*2.0-1.0)*uCapSin;
+      vec3 p=vec3(q.x, sqrt(max(1.0-dot(q,q),0.0)), q.y);
+      float h=height(p);
+      float land=smoothstep(0.0,0.08,h);
+      // fine relief only where the patch mesh is dense enough to carry it (near the start point)
+      float near=1.0-smoothstep(0.12,0.42,length(q)/uCapSin);
+      h+=(fbm(p*110.0+uSeed,2)*0.04+(ridged(p*55.0+uSeed,3)-0.35)*0.05)*land*near;
+      gl_FragColor=vec4(h,0.0,0.0,1.0);`)
+
+  // polar grid: rings get denser towards the pole, where the camera starts
+  const R = o.rings, M = o.sectors
+  const count = 1 + (R + 1) * M
+  const pos = new Float32Array(count * 3)
+  const skirt = new Float32Array(count)
+  pos[1] = 1
+  for (let i = 1; i <= R + 1; i++) {
+    const last = i === R + 1
+    const th = cap * Math.pow(Math.min(i, R) / R, 1.7)
+    for (let j = 0; j < M; j++) {
+      const ph = (j / M) * Math.PI * 2
+      const k = 1 + (i - 1) * M + j
+      pos[k * 3] = Math.sin(th) * Math.cos(ph)
+      pos[k * 3 + 1] = Math.cos(th)
+      pos[k * 3 + 2] = Math.sin(th) * Math.sin(ph)
+      if (last) skirt[k] = 1
+    }
+  }
+  const idx = new Uint32Array(M * 3 + R * M * 6)
+  let n = 0
+  for (let j = 0; j < M; j++) { idx[n++] = 0; idx[n++] = 1 + ((j + 1) % M); idx[n++] = 1 + j }
+  for (let i = 0; i < R; i++) {
+    for (let j = 0; j < M; j++) {
+      const a = 1 + i * M + j, b = 1 + i * M + ((j + 1) % M)
+      const c = a + M, d = b + M
+      idx[n++] = a; idx[n++] = b; idx[n++] = c; idx[n++] = b; idx[n++] = d; idx[n++] = c
+    }
+  }
+  const g = new BufferGeometry()
+  g.setAttribute('position', new BufferAttribute(pos, 3))
+  g.setAttribute('aSkirt', new BufferAttribute(skirt, 1))
+  g.setIndex(new BufferAttribute(idx, 1))
+  const r0 = base.uniforms.uR.value as number
+  g.boundingSphere = new Sphere(new Vector3(0, r0 * Math.cos(cap), 0), r0 * capSin * 1.1)
+
+  const mat = new ShaderMaterial({
+    uniforms: { ...base.uniforms, uPMap: { value: pmap }, uCapSin: { value: capSin } },
+    defines: { PATCH: 1 },
+    vertexShader: /* glsl */ `
+      ${UV}
+      uniform sampler2D uHMap, uPMap; uniform float uR, uAmp, uCapSin;
+      attribute float aSkirt;
+      varying vec3 vP; varying vec3 vL; varying float vH; varying vec3 vW;
+      void main(){
+        vec3 p=normalize(position);
+        vec2 q=vec2(p.x,p.z)/uCapSin;
+        float hp=textureLod(uPMap,q*0.5+0.5,0.0).r;
+        float hg=textureLod(uHMap,sphereUv(p),0.0).r;
+        float h=mix(hp,hg,smoothstep(0.78,0.96,length(q)));
+        vH=h; vP=p;
+        float lift=1.0+0.0004*smoothstep(0.85,1.0,length(q));   // win the overlap with the global mesh
+        vec3 L=p*uR*(1.0+max(h,0.0)*uAmp)*lift*(1.0-aSkirt*0.02);
+        vL=L;
+        vec4 w=modelMatrix*vec4(L,1.0); vW=w.xyz;
+        gl_Position=projectionMatrix*viewMatrix*w;
+      }`,
+    fragmentShader: PLANET_FRAG,
+  })
+  const mesh = new Mesh(g, mat)
+  mesh.onBeforeRender = bindRotation
+  // the global mesh sinks only well inside the patch, so its sloped boundary triangles stay hidden
+  return { mesh, capCos: Math.cos(cap - (1.6 * Math.PI) / 180) }
 }

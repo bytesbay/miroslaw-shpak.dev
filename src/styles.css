@@ -56,6 +56,26 @@ html.nofx #gl { display: none; }
     var(--bg);
 }
 
+/* ------------------------------------------------------------ preloader (3D mode only) */
+.loader { display: none; }
+html.fx.preload .loader {
+  display: flex; position: fixed; inset: 0; z-index: 60; align-items: center; justify-content: center;
+  background: var(--bg); transition: opacity 0.7s var(--ease), visibility 0s linear 0.7s;
+}
+html.fx.preload.loaded .loader { opacity: 0; visibility: hidden; pointer-events: none; }
+.loader-box { width: 220px; }
+.loader-text { font: 13px/1 var(--pixel); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 12px; text-align: center; }
+.loader-text span { animation: dot 1.2s steps(1) infinite; }
+.loader-text span:nth-child(2) { animation-delay: 0.2s; }
+.loader-text span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot { 50% { opacity: 0; } }
+.loader-bar { height: 10px; border: 2px solid var(--accent); padding: 2px; }
+.loader-bar i {
+  display: block; height: 100%; width: calc(var(--p, 0.04) * 100%);
+  background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 11px);
+  transition: width 0.35s var(--ease);
+}
+
 /* ------------------------------------------------------------ top bar */
 .topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 20;
@@ -158,9 +178,10 @@ html.fx .stage { position: sticky; top: 0; height: 100vh; height: 100svh; displa
 html.fx .panel {
   opacity: var(--v, 0);
   transform: translate3d(0, calc((1 - var(--v, 0)) * var(--dir, 1) * 36px), 0);
-  filter: blur(calc((1 - var(--v, 0)) * 6px));
 }
 html.fx .ch.is-hidden .panel { visibility: hidden; }
+/* the first screen is visible before any JS runs (LCP does not wait for scripts) */
+html.fx .ch-hello .panel { opacity: 1; transform: none; }
 html.fx .panel::before {
   content: ''; position: absolute; inset: -18% -22%; z-index: -1; pointer-events: none;
   background: radial-gradient(closest-side, #07060cd0, #07060c80 55%, transparent);

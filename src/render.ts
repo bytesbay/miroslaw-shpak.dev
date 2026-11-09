@@ -87,7 +87,10 @@ function career() {
     (r, i) => `<li class="role" data-i="${i}" id="career-${r.id}">${roleArticle(r)}</li>`,
   ).join('')
   const dots = CAREER.map(
-    (r, i) => `<li data-i="${i}"><a href="#career-${r.id}" data-role="${i}" aria-label="${esc(r.role + ', ' + r.company)}">${esc(r.period.split(' – ')[0].replace(/^\w+ /, ''))}</a></li>`,
+    (r, i) => {
+      const year = r.period.split(' – ')[0].replace(/^\w+ /, '')
+      return `<li data-i="${i}"><a href="#career-${r.id}" data-role="${i}" aria-label="${esc(`${year}: ${r.role}, ${r.company}`)}">${esc(year)}</a></li>`
+    },
   ).join('')
   return `<div class="stage"><div class="panel panel-career">
       <p class="kicker">04 · Career</p>
