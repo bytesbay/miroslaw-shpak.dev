@@ -218,3 +218,67 @@ export function makeDetailedPlanet(o: PlanetOpts) {
   mesh.geometry.boundingSphere!.radius = o.radius * (1 + o.amp * 1.5)
   return mesh
 }
+
+/*
+  Cloud / haze shell. Home planet: domain-warped cloud fronts that drift slowly,
+  lit by the sun with a warm tint along the terminator. Destination: thin banded dust haze.
+*/
+export function makeClouds(o: { radius: number; segs: number; kind: 0 | 1; sun: Vector3; seed: [number, number, number]; tint: string; opacity: number }) {
+  const mat = new ShaderMaterial({
+    uniforms: {
+      uSun: { value: o.sun }, uTime: { value: 0 }, uSeed: { value: new Vector3(...o.seed) }, uKind: { value: o.kind },
+      uTint: { value: new Color(o.tint) }, uOpacity: { value: o.opacity }, uNormalM: { value: new Matrix3() },
+    },
+    // large-scale density per vertex (cheap), fine wisps per pixel
+    vertexShader: /* glsl */ `
+      ${NOISE}
+      uniform vec3 uSeed; uniform float uTime, uKind;
+      varying vec3 vP; varying vec3 vW; varying float vD; varying vec3 vWarp;
+      void main(){
+        vec3 p=normalize(position); vP=p;
+        if(uKind<0.5){
+          vec3 q=p*2.2+uSeed+vec3(uTime*0.006,0.0,uTime*0.003);
+          vec3 w=vec3(fbm(q,3),fbm(q+vec3(4.1,7.3,2.2),3),fbm(q+vec3(8.7,1.9,5.5),3));
+          float d=fbm(q*1.6+w*1.4,5);
+          d+=0.18*sin(abs(p.y)*14.0+w.x*3.0);
+          vD=d; vWarp=w;
+        } else {
+          vec3 q=vec3(p.y*7.0,p.x*1.1,p.z*1.1)+uSeed+vec3(0.0,uTime*0.004,0.0);
+          vD=fbm(q+vec3(fbm(p*2.0+uSeed,3)*2.0),4); vWarp=vec3(0.0);
+        }
+        vec4 w4=modelMatrix*vec4(position,1.0); vW=w4.xyz;
+        gl_Position=projectionMatrix*viewMatrix*w4;
+      }`,
+    fragmentShader: /* glsl */ `
+      ${NOISE}
+      uniform vec3 uSun, uSeed, uTint; uniform float uTime, uKind, uOpacity; uniform mat3 uNormalM;
+      varying vec3 vP; varying vec3 vW; varying float vD; varying vec3 vWarp;
+      void main(){
+        vec3 p=vP;
+        float c;
+        if(uKind<0.5){
+          float fine=snoise(p*36.0+vWarp*2.0+uSeed)*0.09+snoise(p*110.0+uSeed)*0.04;
+          c=smoothstep(0.08,0.42,vD+fine);
+        } else {
+          c=smoothstep(0.0,0.5,vD+snoise(vec3(p.y*40.0,p.x*6.0,p.z*6.0))*0.05)*0.8;
+        }
+        vec3 S=normalize(uNormalM*p);
+        vec3 V=normalize(cameraPosition-vW);
+        float sd=dot(S,uSun);
+        float day=smoothstep(-0.18,0.35,sd);
+        float sunset=exp(-pow((sd-0.02)*5.0,2.0));
+        vec3 col=mix(uTint,vec3(1.0,0.62,0.48),sunset*0.7)*(0.04+day*1.05);
+        float edge=smoothstep(0.0,0.3,dot(S,V));
+        gl_FragColor=vec4(col,c*uOpacity*edge);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthWrite: false,
+  })
+  const mesh = new Mesh(sphereCube(o.segs), mat)
+  mesh.scale.setScalar(o.radius)
+  mesh.geometry.boundingSphere!.radius = 1.01
+  mesh.onBeforeRender = bindRotation
+  mesh.renderOrder = 2
+  return mesh
+}

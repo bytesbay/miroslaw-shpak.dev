@@ -13,5 +13,12 @@ Personal site of Miroslaw Shpak. A scroll-driven three.js story built on top of 
 npm i
 npm run dev      # http://localhost:5173 (add ?fx in headless browsers, ?nofx for the static version)
 npm run build
-npm run deploy   # Cloudflare Pages, project "miroslaw-shpak"
+npm run deploy   # manual deploy to Cloudflare Workers (static assets)
 ```
+
+## CI
+
+Every push to `main` runs `.github/workflows/deploy.yml`: typecheck, build, deploy the site and the www redirect
+to Cloudflare Workers, smoke-test the live domain and ping IndexNow (Bing, Yandex and others). A weekly run refreshes
+GitHub star counts. Secrets: `CLOUDFLARE_API_TOKEN` (Workers Scripts edit, Workers Routes edit on the zone) and
+`CLOUDFLARE_ACCOUNT_ID`.

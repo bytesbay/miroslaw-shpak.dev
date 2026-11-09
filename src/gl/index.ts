@@ -10,7 +10,7 @@ import {
   evaluate, newPose, orient, configure, R_H, C_D, R_D, SUN, N_O, ringPoint, thetaOf, capturePoint, CAREER_FIRST, CAREER_COUNT, smooth, THETA0,
 } from './timeline'
 import { makeAtmosphere, makePlanetRing, makeStars, makeDust, makeOrbit, makeTrail, glowTexture, glowSprite } from './world'
-import { makeDetailedPlanet, sphereCube, bindRotation } from './planet'
+import { makeDetailedPlanet, sphereCube, bindRotation, makeClouds } from './planet'
 
 export type Gl = { frame(dt: number, t: number, mx: number, my: number): void; resize(): void; warp: number }
 
@@ -65,6 +65,8 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
   const homeLo = new Mesh(sphereCube(48), homeMesh.material)
   homeLo.geometry.boundingSphere!.radius = R_H * 1.05
   homeLo.onBeforeRender = bindRotation
+  const homeClouds = makeClouds({ radius: R_H * 1.027, segs: weak ? 80 : 160, kind: 0, sun: SUN, seed: [2.3, 5.1, 8.8], tint: '#f2efff', opacity: 0.82 })
+  home.add(homeClouds)
   home.add(homeMesh, homeLo, makeAtmosphere(R_H, '#6f8dff', SUN, 1.1, new Vector3(0, 0, 0)))
   scene.add(home)
 
@@ -80,6 +82,8 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
   destLo.onBeforeRender = bindRotation
   const ring = makePlanetRing(R_D * 1.38, R_D * 2.1, SUN)
   ring.lookAt(new Vector3(-0.12, 1, 0.3))
+  const destHaze = makeClouds({ radius: R_D * 1.06, segs: weak ? 48 : 96, kind: 1, sun: SUN, seed: [6.6, 1.2, 3.3], tint: '#ffb6a8', opacity: 0.32 })
+  dest.add(destHaze)
   dest.add(destMesh, destLo, makeAtmosphere(R_D, '#ff6a9a', SUN, 0.55, C_D), ring)
   scene.add(dest)
 
@@ -250,6 +254,9 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
     homeMesh.rotation.y += dt * 0.004
     destMesh.rotation.y += dt * 0.006
     homeLo.rotation.copy(homeMesh.rotation)
+    homeClouds.rotation.y = homeMesh.rotation.y * 1.6
+    ;(homeClouds.material as ShaderMaterial).uniforms.uTime.value = time
+    ;(destHaze.material as ShaderMaterial).uniforms.uTime.value = time
     destLo.rotation.copy(destMesh.rotation)
     const nearH = R_H / Math.max(1, camera.position.length()) > 0.12
     homeMesh.visible = nearH; homeLo.visible = !nearH
@@ -266,7 +273,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void): Pro
     // adaptive resolution for weak GPUs
     frames++
     if (frames > 30 && frames < 240) {
-      if (dt > 0.028) slowFrames++
+      if (dt > 0.022) slowFrames++
       if (slowFrames > 40 && renderer.getPixelRatio() > 1) {
         renderer.setPixelRatio(1)
         renderer.setSize(innerWidth, innerHeight, false)

@@ -1,5 +1,13 @@
 import { defineConfig, type Plugin } from 'vite'
 import { resolve } from 'node:path'
+import { execSync } from 'node:child_process'
+
+// Content date for sitemap and structured data: the last commit, not the build time,
+// so rebuilds without changes do not look like fresh content.
+const lastModified = (() => {
+  try { return execSync('git log -1 --format=%cs', { encoding: 'utf8' }).trim() } catch { return new Date().toISOString().slice(0, 10) }
+})()
+process.env.SITE_LASTMOD = lastModified
 import { renderStory, renderNav, renderFooter, renderCv, head, llmsTxt, type Stars } from './src/render'
 import { OPEN_SOURCE, SITE } from './src/content'
 
@@ -12,7 +20,9 @@ async function fetchStars(): Promise<Stars> {
     OPEN_SOURCE.map(async (p) => {
       try {
         const ctl = AbortSignal.timeout(4000)
-        const r = await fetch(`https://api.github.com/repos/${p.repo}`, { signal: ctl, headers: { 'user-agent': 'miroslaw-shpak.dev' } })
+        const headers: Record<string, string> = { 'user-agent': 'miroslaw-shpak.dev' }
+        if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`
+        const r = await fetch(`https://api.github.com/repos/${p.repo}`, { signal: ctl, headers })
         if (r.ok) {
           const j = (await r.json()) as { stargazers_count?: number }
           if (typeof j.stargazers_count === 'number' && j.stargazers_count >= p.stars) out[p.repo] = j.stargazers_count
@@ -40,13 +50,13 @@ function site(): Plugin {
         .replace('<!--@cv-->', renderCv(stars))
     },
     generateBundle() {
-      const today = new Date().toISOString().slice(0, 10)
+      const today = lastModified
       this.emitFile({
         type: 'asset',
         fileName: 'sitemap.xml',
         source: `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>${SITE.url}/</loc><lastmod>${today}</lastmod><priority>1.0</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url><loc>${SITE.url}/</loc><lastmod>${today}</lastmod><priority>1.0</priority><image:image><image:loc>${SITE.url}/og.png</image:loc></image:image></url>
   <url><loc>${SITE.url}/cv/</loc><lastmod>${today}</lastmod><priority>0.9</priority></url>
 </urlset>
 `,

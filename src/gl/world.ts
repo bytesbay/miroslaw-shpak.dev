@@ -26,11 +26,20 @@ export function makeAtmosphere(radius: number, color: string, sun: Vector3, stre
         uniform vec3 uColor; uniform vec3 uSun; uniform float uK;
         varying vec3 vNw; varying vec3 vW; varying vec3 vNv;
         void main() {
-          float i = pow(clamp(0.74 + vNv.z, 0.0, 1.0), 4.2);
+          float z = clamp(0.74 + vNv.z, 0.0, 1.0);
+          float outer = pow(z, 4.2);
+          float inner = pow(z, 14.0);                       // thin bright limb right at the surface
           vec3 V = normalize(vW - cameraPosition);
-          float lit = smoothstep(-0.35, 0.55, dot(vNw, uSun));
+          float sd = dot(vNw, uSun);
+          float lit = smoothstep(-0.35, 0.55, sd);
+          float sunset = exp(-pow((sd + 0.04) * 4.5, 2.0)); // warm band along the terminator
           float fwd = pow(max(dot(V, uSun), 0.0), 6.0) * 1.6;
-          gl_FragColor = vec4(uColor * i * (lit + fwd + 0.06) * uK, 1.0);
+          vec3 deep = uColor * vec3(0.55, 0.6, 1.0);
+          vec3 col = mix(deep, uColor, smoothstep(0.0, 1.0, inner * 2.0));
+          col = mix(col, vec3(1.0, 0.5, 0.38), sunset * 0.75);
+          col = mix(col, vec3(1.0), inner * lit * 0.35);
+          float k = outer * (lit + fwd + 0.05) + inner * (lit * 0.9 + sunset * 0.8 + fwd * 0.6);
+          gl_FragColor = vec4(col * k * uK, 1.0);
         }`,
       side: BackSide, blending: AdditiveBlending, transparent: true, depthWrite: false,
     }),
@@ -47,9 +56,12 @@ export function makeAtmosphere(radius: number, color: string, sun: Vector3, stre
           vec3 V = normalize(cameraPosition - vW);
           float alt = length(cameraPosition - uC) - uR;
           float f = pow(1.0 - max(dot(vNw, V), 0.0), 3.0) * smoothstep(uR * 0.08, uR * 0.9, alt);
-          float lit = smoothstep(-0.2, 0.6, dot(vNw, uSun));
+          float sd = dot(vNw, uSun);
+          float lit = smoothstep(-0.2, 0.6, sd);
+          float sunset = exp(-pow((sd + 0.02) * 5.0, 2.0));
           float fwd = pow(max(dot(-V, uSun), 0.0), 8.0);
-          gl_FragColor = vec4(uColor * f * (lit * 0.9 + fwd * 1.2) * uK, 1.0);
+          vec3 col = mix(uColor, vec3(1.0, 0.52, 0.4), sunset * 0.7);
+          gl_FragColor = vec4(col * f * (lit * 0.9 + fwd * 1.2 + sunset * 0.5) * uK, 1.0);
         }`,
       side: FrontSide, blending: AdditiveBlending, transparent: true, depthWrite: false,
     }),

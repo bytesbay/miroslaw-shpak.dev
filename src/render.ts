@@ -151,7 +151,7 @@ export function renderNav() {
 export function renderFooter() {
   return `<footer class="foot">
     <p>${esc(MOTTO)} Built from scratch with three.js, hosted on Cloudflare. ${ext(SITE.repo, 'Source on GitHub')}.</p>
-    <p>© ${new Date().getFullYear()} Miroslaw Shpak · <a href="/cv/">CV</a></p>
+    <p>© ${new Date().getFullYear()} Miroslaw Shpak (Mirosław, Myroslav Shpak · Мирослав Шпак) · <a href="/cv/">CV</a></p>
   </footer>`
 }
 
@@ -180,6 +180,9 @@ export function jsonLd(page: 'home' | 'cv') {
       'Prediction markets', 'AI agents', 'Agentic Ops', 'Model Context Protocol', 'Kubernetes', 'Three.js', 'WebGL', 'GLSL',
       'React', 'Next.js', 'Vue', 'Nuxt', 'NestJS', 'MongoDB', 'PostgreSQL', 'Software architecture', 'Engineering leadership',
     ],
+    mainEntityOfPage: { '@id': `${SITE.url}/#page` },
+    workLocation: { '@type': 'Place', name: 'Remote / Wrocław, Poland' },
+    seeks: { '@type': 'Demand', name: 'Senior/Staff Engineer, Tech Lead or CTO role' },
     hasOccupation: {
       '@type': 'Occupation',
       name: 'Chief Technology Officer',
@@ -194,13 +197,23 @@ export function jsonLd(page: 'home' | 'cv') {
       '@id': `${SITE.url}${page === 'cv' ? '/cv/' : '/'}#page`,
       url: `${SITE.url}${page === 'cv' ? '/cv/' : '/'}`,
       name: page === 'cv' ? `${SITE.name} CV` : SITE.title,
-      dateModified: new Date().toISOString().slice(0, 10),
+      dateCreated: '2026-11-08',
+      dateModified: process.env.SITE_LASTMOD || new Date().toISOString().slice(0, 10),
+      about: { '@id': `${SITE.url}/#person` },
       mainEntity: { '@id': `${SITE.url}/#person` },
       inLanguage: 'en',
     },
     person,
-    { '@type': 'WebSite', '@id': `${SITE.url}/#site`, url: SITE.url + '/', name: SITE.name, inLanguage: 'en' },
+    { '@type': 'WebSite', '@id': `${SITE.url}/#site`, url: SITE.url + '/', name: SITE.name, alternateName: SITE.alternateNames, inLanguage: 'en', publisher: { '@id': `${SITE.url}/#person` } },
   ]
+  if (page === 'cv')
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: SITE.name, item: `${SITE.url}/` },
+        { '@type': 'ListItem', position: 2, name: 'CV', item: `${SITE.url}/cv/` },
+      ],
+    })
   return `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>`
 }
 
@@ -230,12 +243,14 @@ export function head(page: 'home' | 'cv') {
   <meta property="og:image" content="${SITE.url}/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Miroslaw Shpak, hands-on CTO. A shuttle over a low-poly planet.">
+  <meta property="og:image:alt" content="Miroslaw Shpak, hands-on CTO. A shuttle over a procedural planet.">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${esc(title)}">
   <meta name="twitter:description" content="${esc(desc)}">
   <meta name="twitter:image" content="${SITE.url}/og.png">
+  <meta name="twitter:image:alt" content="Miroslaw Shpak, hands-on CTO. A shuttle over a procedural planet.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -261,6 +276,7 @@ export function renderCv(stars: Stars) {
     <div>
       <h1>Miroslaw Shpak</h1>
       <p class="cv-title">Hands-on CTO & Co-founder · Senior Software Engineer</p>
+      <p class="cv-meta">Also written as Mirosław Shpak, Myroslav Shpak, Мирослав Шпак (bytesbay)</p>
       <p class="cv-meta">Wrocław, Poland · <a href="mailto:${SITE.email}">${SITE.email}</a> · <a href="${SITE.links.linkedin}" rel="me">linkedin.com/in/miroslaw-shpak</a> · <a href="${SITE.links.github}" rel="me">github.com/bytesbay</a> · <a href="${SITE.url}/">miroslaw-shpak.dev</a></p>
     </div>
     <p class="cv-actions no-print"><a class="btn" href="/">← 3D version</a> <button class="btn btn-primary" type="button" onclick="print()">Save as PDF</button></p>

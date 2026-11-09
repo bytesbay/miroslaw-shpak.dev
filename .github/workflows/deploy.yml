@@ -1,0 +1,66 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1' # weekly rebuild: refreshes GitHub star counts
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -p .
+
+      - name: Deploy www redirect
+        working-directory: www-redirect
+        run: npx wrangler deploy -c wrangler.jsonc
+
+      - name: Build
+        run: npx vite build
+
+      - name: Deploy site
+        run: npx wrangler deploy
+
+      - name: Smoke test
+        run: |
+          set -e
+          sleep 5
+          for p in / /cv/ /sitemap.xml /robots.txt /llms.txt; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://miroslaw-shpak.dev$p")
+            echo "$p $code"; test "$code" = 200
+          done
+          js=$(ls dist/assets | grep '^main-.*\.js$')
+          curl -s https://miroslaw-shpak.dev/ | grep -q "$js" || (echo "live html does not reference $js yet" && exit 1)
+          test "$(curl -s -o /dev/null -w '%{http_code}' https://miroslaw-shpak.dev/nope)" = 404
+          curl -sI https://www.miroslaw-shpak.dev/ | grep -qi 'location: https://miroslaw-shpak.dev/'
+
+      - name: Notify search engines (IndexNow)
+        if: github.event_name != 'schedule'
+        run: |
+          key=$(basename $(ls public/*.txt | grep -E '/[0-9a-f]{32}\.txt$') .txt)
+          curl -s -o /dev/null -w 'IndexNow %{http_code}\n' -X POST https://api.indexnow.org/indexnow \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            -d "{\"host\":\"miroslaw-shpak.dev\",\"key\":\"$key\",\"keyLocation\":\"https://miroslaw-shpak.dev/$key.txt\",\"urlList\":[\"https://miroslaw-shpak.dev/\",\"https://miroslaw-shpak.dev/cv/\"]}"
