@@ -4,6 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!--@head-->
+  <script>
+    // Visitors from Cyprus do not see the CV. Country comes from Cloudflare's /cdn-cgi/trace on this domain.
+    // ?geo=XX overrides it for testing.
+    (function () {
+      var d = document.documentElement
+      d.classList.add('geo-pending')
+      var finish = function (c) {
+        d.classList.remove('geo-pending')
+        if (c === 'CY') {
+          d.classList.add('geo-cy')
+          if (location.pathname.indexOf('/cv') === 0) location.replace('/')
+        }
+      }
+      var o = /[?&]geo=([A-Za-z]{2})/.exec(location.search)
+      if (o) return finish(o[1].toUpperCase())
+      var t = setTimeout(function () { finish('') }, 2000)
+      fetch('/cdn-cgi/trace', { cache: 'no-store' })
+        .then(function (r) { return r.text() })
+        .then(function (x) { clearTimeout(t); var m = /(?:^|\n)loc=([A-Z]{2})/.exec(x); finish(m ? m[1] : '') })
+        .catch(function () { clearTimeout(t); finish('') })
+    })()
+  </script>
   <link rel="preload" href="/fonts/silkscreen.woff2" as="font" type="font/woff2" crossorigin>
   <script>
     // Decide before first paint whether the 3D story runs. Static page otherwise.
@@ -36,7 +58,7 @@
 
   <header class="topbar">
     <a class="brand" href="/" data-go="hello" aria-label="Miroslaw Shpak, back to top"><span>Miroslaw&nbsp;Shpak</span></a>
-    <nav class="nav" aria-label="Sections"><!--@nav--><a class="btn btn-small" href="/cv/">CV</a></nav>
+    <nav class="nav" aria-label="Sections"><!--@nav--><a class="btn btn-small" href="/cv/" data-cv>CV</a></nav>
   </header>
 
   <main id="story">

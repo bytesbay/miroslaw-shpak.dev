@@ -48,3 +48,5 @@ p { margin: 0 0 10px; }
   h2 { margin-top: 18px; break-after: avoid; }
   .cv-roles > li { break-inside: avoid; padding: 10px 0; }
 }
+
+html.geo-pending .cv, html.geo-cy .cv, html.geo-cy .foot { visibility: hidden; }

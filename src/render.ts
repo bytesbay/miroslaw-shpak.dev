@@ -35,7 +35,7 @@ function hero() {
       <p class="lead">${esc(HERO.lead)}</p>
       <div class="cta">
         <a class="btn btn-primary" href="#contact" data-go="contact">Get in touch</a>
-        <a class="btn" href="/cv/">Read the CV</a>
+        <a class="btn" href="/cv/" data-cv>Read the CV</a>
       </div>`)
 }
 
@@ -133,7 +133,7 @@ function contact() {
       <p class="lead">${esc(CONTACT.lead)}</p>
       <p>${esc(CONTACT.details)}</p>
       ${contactLinks()}
-      <p class="cta"><a class="btn" href="/cv/">Full CV, printable</a></p>`)
+      <p class="cta" data-cv><a class="btn" href="/cv/">Full CV, printable</a></p>`)
 }
 
 const LENS: Record<string, number> = {
@@ -159,7 +159,7 @@ export function renderNav() {
 export function renderFooter() {
   return `<footer class="foot">
     <p>${esc(MOTTO)} Built from scratch with three.js, hosted on Cloudflare. ${ext(SITE.repo, 'Source on GitHub')}.</p>
-    <p>© ${new Date().getFullYear()} Miroslaw Shpak (Mirosław, Myroslav Shpak · Мирослав Шпак) · <a href="/cv/">CV</a></p>
+    <p>© ${new Date().getFullYear()} Miroslaw Shpak (Mirosław, Myroslav Shpak · Мирослав Шпак) <span data-cv>· <a href="/cv/">CV</a></span></p>
   </footer>`
 }
 

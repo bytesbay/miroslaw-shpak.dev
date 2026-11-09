@@ -131,12 +131,12 @@ p { margin: 0 0 14px; color: #ddd8e8; }
 .stats span { display: block; font-size: 13px; line-height: 1.35; color: var(--muted); margin-top: 4px; }
 
 .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
-.group h3 { font-family: var(--pixel); font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 8px; }
+.group h3 { font-family: var(--pixel); font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #c3bdd3; margin-bottom: 8px; text-shadow: 0 0 2px #07060c, 0 0 6px #07060c, 0 1px 0 #07060c; }
 .chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.chips li.fav { border-color: #ff2a7566; background: rgba(255, 42, 117, 0.08); }
+.chips li.fav { border-color: #ff2a7588; background: #2a0f22f2; }
 .chips li .heart { width: 9px; height: 8px; margin-left: 6px; color: var(--accent); vertical-align: 0; display: inline-block; }
-.chips li { font-size: 13px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.035); color: #e6e1ef; white-space: nowrap; }
+.chips li { font-size: 13px; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.16); background: #110e1cf0; color: #f1edf8; white-space: nowrap; }
 
 .approach { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .approach li { padding: 20px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); }
@@ -304,3 +304,7 @@ html.nofx .ch-approach .panel { max-width: 1000px; }
   html.fx .foot { margin-top: -160px; min-height: 160px; align-items: flex-end; padding-bottom: 28px; pointer-events: none; background: linear-gradient(to bottom, transparent, rgba(7, 6, 12, 0.88) 55%, #07060c); }
   html.fx .foot a { pointer-events: auto; }
 }
+
+/* geo: CV hidden for Cyprus; links keep their space while the check is pending */
+html.geo-pending [data-cv] { visibility: hidden; }
+html.geo-cy [data-cv] { display: none !important; }
