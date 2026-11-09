@@ -30,7 +30,7 @@ export const HERO = {
 export const STATS = [
   { value: '11', unit: 'years', label: 'in commercial software, coding since 15' },
   { value: '$13.75M', unit: '', label: 'raised by projects I helped build' },
-  { value: '$30M', unit: '', label: 'peak TVL of a DeFi protocol I designed and built' },
+  { value: '$30M', unit: '', label: 'peak TVL of a DeFi protocol based on my idea and architecture' },
   { value: '2', unit: 'acquisitions', label: 'companies I helped build, including one successful exit' },
   { value: '20', unit: 'people', label: 'largest team I have led' },
 ]
@@ -52,8 +52,8 @@ export const FAVORITES = ['Rust', 'EVM', 'MongoDB', 'PostgreSQL', 'GLSL', 'Vue /
 
 export const APPROACH = [
   {
-    title: 'Product involvement',
-    text: 'For the yield protocol, I originated the product idea and designed the architecture. For the exchange, I co-developed the idea and led the team.',
+    title: 'From idea to launch',
+    text: 'I originated the idea and designed the architecture for a non-custodial yield protocol, then built its contracts, backend and offchain automation in a three-person team. I also contributed to product design and community engagement.',
   },
   {
     title: 'Small teams, full products',
@@ -85,11 +85,11 @@ export const CAREER: Role[] = [
     period: 'Aug 2023 – Present',
     place: 'Remote',
     summary:
-      'A venture group building and launching betting, exchange and DeFi products. My work spans architecture, hands-on development and hiring, plus product ideas, design and community on selected projects.',
+      'A venture group building betting, exchange, DeFi and infrastructure products. Hands-on CTO, with product ideas, design and community engagement on selected projects.',
     points: [
-      'Onchain DFS betting: as CTO, owned the architecture and all technical decisions. Wrote the entire backend, relayer and AI agents for risk and settlement. $2.5M raised.',
-      'Non-custodial yield protocol on Base: my idea and architecture. About $30M peak TVL; users included investment funds. Acquired by a leading DEX.',
-      'Early BRC-20 / Ordinals exchange: co-developed the idea, designed the architecture, led the team. $8M raised.',
+      'Onchain DFS betting: CTO and architect. Wrote the entire backend, relayer and risk/settlement agents. The project raised $2.5M.',
+      'Non-custodial yield protocol: my idea and architecture; wrote contracts, backend and automation. Three-person team, about $30M peak TVL, investment funds among users. The company was acquired.',
+      'BRC-20 / Ordinals exchange: co-developed the idea, designed the architecture and led the team. The project raised $8M.',
       'AI swap chat (2023): Co-CTO for infrastructure, backend and model fine-tuning. About 1,000 DAU at peak.',
     ],
     stack: 'TypeScript, Solidity/Foundry, Rust, Next.js, Hono, MongoDB, Kubernetes',
@@ -128,8 +128,9 @@ export const CAREER: Role[] = [
     period: 'Aug 2019 – Jan 2021',
     place: 'London, remote',
     summary:
-      'Led a 20-person team modernizing a scientific agtech platform. The calculation core was 25-year-old Visual Basic that could not be rewritten, so I wrapped it in an API and split the product into microservices that matched the team: Vue/Laravel, .NET and Node.js.',
-    points: ['Worked with scientists on soil analysis, sensor data and satellite imagery.'],
+      'Led an existing 20-person team modernizing a scientific agtech platform. Chose an API layer around a 25-year-old Visual Basic calculation core that could not be rewritten within the project. Designed a microservice architecture around the team\'s existing Vue/Laravel, .NET and Node.js skills.',
+    points: ['Worked with scientists on soil analysis, sensor data and satellite imagery. The product is now known as IPNUK.'],
+    link: { href: 'https://ipnuk.com', label: 'ipnuk.com' },
   },
   {
     id: 'coelix',
@@ -189,7 +190,7 @@ export const AI_STACK =
 
 export const CONTACT = {
   lead:
-    'Open to Senior/Staff Engineer, Tech Lead and CTO roles. Betting, Web3/DeFi and AI infrastructure first, fintech and SaaS too. Remote, hybrid or on-site, and open to relocation.',
+    'Open to Senior/Staff Product Engineer, Tech Lead and hands-on CTO roles. Betting, Web3/DeFi and AI products first, fintech and SaaS too. Remote, hybrid or on-site, and open to relocation.',
   details: 'Based in Wrocław, Poland. Polish JDG for long-term B2B, full-time employment works as well.',
 }
 
