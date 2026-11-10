@@ -446,18 +446,31 @@ function init() {
   }
 }
 
-// Live GitHub star counts: the numbers baked into the HTML are refreshed once per session.
+// Live GitHub numbers: the values baked into the HTML are refreshed on load, cached for 10 minutes
+// (keeps well under the unauthenticated API limit without showing stale counts for long).
+const TTL = 10 * 60 * 1000
+function cached(key: string) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) || 'null') as { n: number; t: number } | null
+    return v && Date.now() - v.t < TTL ? v.n : 0
+  } catch { return 0 }
+}
+function store(key: string, n: number) {
+  try { localStorage.setItem(key, JSON.stringify({ n, t: Date.now() })) } catch {}
+}
+
+// Live GitHub star counts.
 function refreshStars() {
   const els = Array.from(document.querySelectorAll<HTMLElement>('.os-stars[data-repo]'))
   els.forEach(async (el) => {
     const repo = el.dataset.repo!
     const key = 'stars:' + repo
-    let n = Number(sessionStorage.getItem(key) || 0)
+    let n = cached(key)
     if (!n) {
       try {
-        const r = await fetch(`https://api.github.com/repos/${repo}`, { headers: { accept: 'application/vnd.github+json' } })
+        const r = await fetch(`https://api.github.com/repos/${repo}`, { cache: 'no-store', headers: { accept: 'application/vnd.github+json' } })
         if (r.ok) n = ((await r.json()) as { stargazers_count?: number }).stargazers_count || 0
-        if (n) sessionStorage.setItem(key, String(n))
+        if (n) store(key, n)
       } catch {}
     }
     const shown = Number((el.textContent || '').replace(/\D/g, ''))
@@ -473,12 +486,12 @@ async function refreshFollowers() {
   if (!el) return
   const user = el.dataset.ghFollowers!
   const key = 'followers:' + user
-  let n = Number(sessionStorage.getItem(key) || 0)
+  let n = cached(key)
   if (!n) {
     try {
-      const r = await fetch(`https://api.github.com/users/${user}`, { headers: { accept: 'application/vnd.github+json' } })
+      const r = await fetch(`https://api.github.com/users/${user}`, { cache: 'no-store', headers: { accept: 'application/vnd.github+json' } })
       if (r.ok) n = ((await r.json()) as { followers?: number }).followers || 0
-      if (n) sessionStorage.setItem(key, String(n))
+      if (n) store(key, n)
     } catch {}
   }
   if (n) {

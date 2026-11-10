@@ -3,6 +3,7 @@
 
 export const SITE = {
   url: 'https://miroslaw-shpak.dev',
+  cvPdf: '/cv/miroslaw-shpak-cv.pdf',
   name: 'Miroslaw Shpak',
   alternateNames: ['Mirosław Shpak', 'Myroslav Shpak', 'Мирослав Шпак', 'bytesbay'],
   title: 'Miroslaw Shpak | Hands-on CTO & Product Engineer',
@@ -39,7 +40,7 @@ export const ABOUT =
   'Some projects started with my own idea; on others, I led the technical side. I have a good eye for design and branding, and contribute to both. I lead teams and remain hands-on in development.'
 
 export const STACK: { group: string; items: string[] }[] = [
-  { group: 'Languages', items: ['TypeScript', 'Solidity', 'Rust', 'C/C++ from the good old days'] },
+  { group: 'Languages', items: ['TypeScript', 'Solidity', 'Rust', 'Python', 'PHP', 'C/C++ from the good old days'] },
   { group: 'Backend', items: ['Node.js', 'Bun', 'NestJS', 'Hono', 'MongoDB', 'PostgreSQL', 'Redis', 'RabbitMQ'] },
   { group: 'Web3', items: ['EVM', 'Foundry', 'viem / wagmi', 'ERC-4337', 'Chainlink', 'Solana', 'BRC-20 / Ordinals', 'TON'] },
   { group: 'Frontend & 3D', items: ['React / Next.js', 'Vue / Nuxt', 'Three.js', 'GLSL', 'Unity', 'Unreal Engine'] },
@@ -181,7 +182,7 @@ export const OPEN_SOURCE = [
     repo: 'bytesbay/pi-gpui',
     href: 'https://pi-gpui.dev',
     text: 'An editor I built for pi coding agent users. Yes, you can call it niche.',
-    stars: 14,
+    stars: 22,
   },
 ]
 

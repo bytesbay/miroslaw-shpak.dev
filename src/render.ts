@@ -185,7 +185,7 @@ export function jsonLd(page: 'home' | 'cv') {
     alumniOf: { '@type': 'CollegeOrUniversity', name: 'Odesa Polytechnic National University' },
     knowsLanguage: ['en', 'uk', 'ru'],
     knowsAbout: [
-      'TypeScript', 'Node.js', 'Solidity', 'Rust', 'Smart contracts', 'EVM', 'Solana', 'DeFi', 'Onchain betting',
+      'TypeScript', 'Node.js', 'Solidity', 'Rust', 'Python', 'PHP', 'Smart contracts', 'EVM', 'Solana', 'DeFi', 'Onchain betting',
       'Prediction markets', 'AI agents', 'Agentic Ops', 'Model Context Protocol', 'Kubernetes', 'Three.js', 'WebGL', 'GLSL',
       'React', 'Next.js', 'Vue', 'Nuxt', 'NestJS', 'MongoDB', 'PostgreSQL', 'Software architecture', 'Engineering leadership',
     ],
@@ -196,7 +196,7 @@ export function jsonLd(page: 'home' | 'cv') {
       '@type': 'Occupation',
       name: 'Chief Technology Officer',
       occupationLocation: { '@type': 'City', name: 'Wrocław' },
-      skills: 'TypeScript, Solidity, Rust, Node.js, Kubernetes, AI agents, Web3',
+      skills: 'TypeScript, Solidity, Rust, Python, PHP, Node.js, Kubernetes, AI agents, Web3',
     },
     sameAs: [SITE.links.linkedin, SITE.links.github, SITE.links.telegram, SITE.links.devto, SITE.links.hashnode],
   }
@@ -231,7 +231,7 @@ export function head(page: 'home' | 'cv') {
   const title = page === 'cv' ? 'Miroslaw Shpak | CV | Hands-on CTO & Product Engineer' : SITE.title
   const desc =
     page === 'cv'
-      ? 'CV of Miroslaw Shpak: hands-on CTO and senior software engineer. TypeScript, Solidity, Rust, Kubernetes and AI agents. Wrocław, Poland. Open to Staff, Tech Lead and CTO roles.'
+      ? 'CV of Miroslaw Shpak: hands-on CTO and senior software engineer. TypeScript, Solidity, Rust, Python, Kubernetes and AI agents. Wrocław, Poland. Open to Staff, Tech Lead and CTO roles.'
       : SITE.description
   return `
   <title>${esc(title)}</title>
@@ -286,9 +286,9 @@ export function renderCv(stars: Stars) {
       <h1>Miroslaw Shpak</h1>
       <p class="cv-title">Hands-on CTO & Co-founder · Product Engineer</p>
       <p class="cv-meta">Also written as Mirosław Shpak, Myroslav Shpak, Мирослав Шпак (bytesbay)</p>
-      <p class="cv-meta">Wrocław, Poland · <a href="mailto:${SITE.email}">${SITE.email}</a> · <a href="${SITE.links.linkedin}" rel="me">linkedin.com/in/miroslaw-shpak</a> · <a href="${SITE.links.github}" rel="me">github.com/bytesbay</a> · <a href="${SITE.url}/">miroslaw-shpak.dev</a></p>
+      <p class="cv-meta">Wrocław, Poland · <a href="mailto:${SITE.email}">${SITE.email}</a> · <a href="${SITE.links.linkedin}" rel="me">linkedin.com/in/miroslaw-shpak</a> · <a href="${SITE.links.github}" rel="me">github.com/bytesbay</a> · <a href="${SITE.url}/">Interactive CV: miroslaw-shpak.dev</a></p>
     </div>
-    <p class="cv-actions no-print"><a class="btn" href="/">← 3D version</a> <button class="btn btn-primary" type="button" onclick="print()">Save as PDF</button></p>
+    <p class="cv-actions no-print"><a class="btn" href="/">← 3D version</a> <a class="btn btn-primary" href="${SITE.cvPdf}" download="miroslaw-shpak-cv.pdf">Download PDF</a></p>
   </header>
   <section aria-labelledby="sum"><h2 id="sum">Summary</h2>
     <p>${esc(ABOUT)}</p>
@@ -313,7 +313,7 @@ export function llmsTxt(stars: Stars) {
 
 > ${SITE.description}
 
-Website: ${SITE.url}/ · CV: ${SITE.url}/cv/ · Email: ${SITE.email}
+Website: ${SITE.url}/ · CV: ${SITE.url}/cv/ · PDF CV: ${SITE.url}${SITE.cvPdf} · Email: ${SITE.email}
 LinkedIn: ${SITE.links.linkedin} · GitHub: ${SITE.links.github}
 Also known as: ${SITE.alternateNames.join(', ')}
 

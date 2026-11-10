@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '17 6 * * 1' # weekly rebuild: refreshes GitHub star counts
+    - cron: '17 6 * * *' # daily rebuild: refreshes GitHub star and follower counts
 
 concurrency:
   group: deploy
