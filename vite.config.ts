@@ -1,6 +1,8 @@
 import { defineConfig, type Plugin } from 'vite'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 
 // Content date for sitemap and structured data: the last commit, not the build time,
 // so rebuilds without changes do not look like fresh content.
@@ -8,6 +10,8 @@ const lastModified = (() => {
   try { return execSync('git log -1 --format=%cs', { encoding: 'utf8' }).trim() } catch { return new Date().toISOString().slice(0, 10) }
 })()
 process.env.SITE_LASTMOD = lastModified
+// cache-busting version for the share image (link previews are cached hard by LinkedIn, Telegram, Slack)
+process.env.OG_V = createHash('sha1').update(readFileSync(resolve(__dirname, 'public/og.png'))).digest('hex').slice(0, 8)
 import { renderStory, renderNav, renderFooter, renderCv, head, llmsTxt, type Stars } from './src/render'
 import { OPEN_SOURCE, SITE } from './src/content'
 

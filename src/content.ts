@@ -9,6 +9,8 @@ export const SITE = {
   title: 'Miroslaw Shpak | Hands-on CTO & Product Engineer',
   description:
     'Miroslaw Shpak, hands-on CTO and product engineer based in Wrocław, Poland. 11 years in software development, with experience building DeFi, betting and AI products.',
+  ogDescription:
+    '11 years building software. Hands-on CTO and product engineer working across DeFi, onchain betting and AI agents in production.',
   jobTitle: 'CTO & Co-founder, Software Engineer',
   location: { city: 'Wrocław', country: 'PL', countryName: 'Poland' },
   email: 'bytesbay@icloud.com',

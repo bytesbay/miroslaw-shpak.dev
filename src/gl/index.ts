@@ -360,6 +360,17 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
       const s = pose.warp * 0.05
       camera.position.add(tmp.set(Math.sin(time * 23.0) + 0.4 * Math.sin(time * 41.0), Math.sin(time * 29.0 + 2.0) + 0.4 * Math.sin(time * 53.0), 0).multiplyScalar(s * 0.35))
     }
+    // framing hook used to render the Open Graph image: yaw/pitch the view, dolly, change FOV
+    const og = (window as any).__og as { yaw?: number; pitch?: number; dolly?: number; fov?: number } | undefined
+    if (og) {
+      const back = tmp.subVectors(camera.position, pose.sp).multiplyScalar((og.dolly ?? 1) - 1)
+      camera.position.add(back)
+      const dir = camTarget.clone().sub(camera.position)
+      dir.applyAxisAngle(camUp, og.yaw ?? 0)
+      dir.applyAxisAngle(right, og.pitch ?? 0)
+      camTarget.copy(camera.position).add(dir)
+      if (og.fov) { camera.fov = og.fov; camera.updateProjectionMatrix(); lastFov = og.fov }
+    }
     camera.up.copy(camUp)
     camera.lookAt(camTarget)
     if (Math.abs(pose.fov - lastFov) > 0.01) {

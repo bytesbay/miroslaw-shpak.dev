@@ -233,6 +233,7 @@ export function head(page: 'home' | 'cv') {
     page === 'cv'
       ? 'CV of Miroslaw Shpak: hands-on CTO and senior software engineer. TypeScript, Solidity, Rust, Python, Kubernetes and AI agents. Wrocław, Poland. Open to Staff, Tech Lead and CTO roles.'
       : SITE.description
+  const shareDesc = page === 'cv' ? desc : SITE.ogDescription
   return `
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(desc)}">
@@ -248,17 +249,17 @@ export function head(page: 'home' | 'cv') {
   <meta property="og:site_name" content="Miroslaw Shpak">
   <meta property="og:url" content="${url}">
   <meta property="og:title" content="${esc(title)}">
-  <meta property="og:description" content="${esc(desc)}">
-  <meta property="og:image" content="${SITE.url}/og.png">
+  <meta property="og:description" content="${esc(shareDesc)}">
+  <meta property="og:image" content="${SITE.url}/og.png?v=${process.env.OG_V || 1}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Miroslaw Shpak, hands-on CTO. A shuttle over a procedural planet.">
+  <meta property="og:image:alt" content="Miroslaw Shpak, hands-on CTO and product engineer. A pixel-art shuttle orbiting a ringed pink planet.">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${esc(title)}">
-  <meta name="twitter:description" content="${esc(desc)}">
-  <meta name="twitter:image" content="${SITE.url}/og.png">
-  <meta name="twitter:image:alt" content="Miroslaw Shpak, hands-on CTO. A shuttle over a procedural planet.">
+  <meta name="twitter:description" content="${esc(shareDesc)}">
+  <meta name="twitter:image" content="${SITE.url}/og.png?v=${process.env.OG_V || 1}">
+  <meta name="twitter:image:alt" content="Miroslaw Shpak, hands-on CTO and product engineer. A pixel-art shuttle orbiting a ringed pink planet.">
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
