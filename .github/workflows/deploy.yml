@@ -34,7 +34,7 @@ jobs:
       - name: Typecheck
         run: npx tsc -p .
 
-      - name: Deploy www redirect
+      - name: Deploy apex -> www redirect
         working-directory: www-redirect
         run: npx wrangler deploy -c wrangler.jsonc
 
@@ -49,13 +49,13 @@ jobs:
           set -e
           sleep 5
           for p in / /cv/ /sitemap.xml /robots.txt /llms.txt; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "https://miroslaw-shpak.dev$p")
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://www.miroslaw-shpak.dev$p")
             echo "$p $code"; test "$code" = 200
           done
           js=$(ls dist/assets | grep '^main-.*\.js$')
-          curl -s https://miroslaw-shpak.dev/ | grep -q "$js" || (echo "live html does not reference $js yet" && exit 1)
-          test "$(curl -s -o /dev/null -w '%{http_code}' https://miroslaw-shpak.dev/nope)" = 404
-          curl -sI https://www.miroslaw-shpak.dev/ | grep -qi 'location: https://miroslaw-shpak.dev/'
+          curl -s https://www.miroslaw-shpak.dev/ | grep -q "$js" || (echo "live html does not reference $js yet" && exit 1)
+          test "$(curl -s -o /dev/null -w '%{http_code}' https://www.miroslaw-shpak.dev/nope)" = 404
+          curl -sI 'https://miroslaw-shpak.dev/cv/?a=1' | grep -qi 'location: https://www.miroslaw-shpak.dev/cv/?a=1'
 
       - name: Notify search engines (IndexNow)
         if: github.event_name != 'schedule'
@@ -63,4 +63,4 @@ jobs:
           key=$(basename $(ls public/*.txt | grep -E '/[0-9a-f]{32}\.txt$') .txt)
           curl -s -o /dev/null -w 'IndexNow %{http_code}\n' -X POST https://api.indexnow.org/indexnow \
             -H 'Content-Type: application/json; charset=utf-8' \
-            -d "{\"host\":\"miroslaw-shpak.dev\",\"key\":\"$key\",\"keyLocation\":\"https://miroslaw-shpak.dev/$key.txt\",\"urlList\":[\"https://miroslaw-shpak.dev/\",\"https://miroslaw-shpak.dev/cv/\"]}"
+            -d "{\"host\":\"www.miroslaw-shpak.dev\",\"key\":\"$key\",\"keyLocation\":\"https://www.miroslaw-shpak.dev/$key.txt\",\"urlList\":[\"https://www.miroslaw-shpak.dev/\",\"https://www.miroslaw-shpak.dev/cv/\"]}"

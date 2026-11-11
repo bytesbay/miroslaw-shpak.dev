@@ -2,7 +2,7 @@
 // Public material: studio project names stay under NDA (see job-search/AGENTS.md).
 
 export const SITE = {
-  url: 'https://miroslaw-shpak.dev',
+  url: 'https://www.miroslaw-shpak.dev',
   cvPdf: '/cv/miroslaw-shpak-cv.pdf',
   name: 'Miroslaw Shpak',
   alternateNames: ['Mirosław Shpak', 'Myroslav Shpak', 'Мирослав Шпак', 'bytesbay'],

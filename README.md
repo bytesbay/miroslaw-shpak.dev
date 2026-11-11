@@ -1,4 +1,4 @@
-# miroslaw-shpak.dev
+# www.miroslaw-shpak.dev
 
 Personal site of Miroslaw Shpak. A scroll-driven three.js story built on top of the old
 [Shuttle Software](https://shuttlesoftware.com) site, plus a plain printable CV at `/cv/`.
@@ -18,7 +18,7 @@ npm run deploy   # manual deploy to Cloudflare Workers (static assets)
 
 ## CI
 
-Every push to `main` runs `.github/workflows/deploy.yml`: typecheck, build, deploy the site and the www redirect
+Every push to `main` runs `.github/workflows/deploy.yml`: typecheck, build, deploy the site (www) and the apex to www redirect
 to Cloudflare Workers, smoke-test the live domain and ping IndexNow (Bing, Yandex and others). A weekly run refreshes
 GitHub star counts. Secrets: `CLOUDFLARE_API_TOKEN` (Workers Scripts edit, Workers Routes edit on the zone) and
 `CLOUDFLARE_ACCOUNT_ID`.

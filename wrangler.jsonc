@@ -9,6 +9,6 @@
   },
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "miroslaw-shpak.dev", "custom_domain": true }],
+  "routes": [{ "pattern": "www.miroslaw-shpak.dev", "custom_domain": true }],
   "observability": { "enabled": true }
 }
