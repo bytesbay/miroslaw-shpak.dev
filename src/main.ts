@@ -10,6 +10,12 @@ import type { Gl } from './gl/index'
 
 const html = document.documentElement
 const FX = html.classList.contains('fx')
+// On touch devices the page scrolls inside <body> (html.inscroll), not the document, so mobile Safari
+// keeps its toolbar still instead of collapsing and expanding it on every scroll direction change.
+const inner = html.classList.contains('inscroll')
+const scroller: HTMLElement = inner ? document.body : (document.scrollingElement as HTMLElement) || html
+const scrollEvents: EventTarget = inner ? document.body : window
+const sy = () => scroller.scrollTop
 
 console.log(
   '%c %c Miroslaw Shpak · built from scratch with three.js · github.com/bytesbay ',
@@ -46,14 +52,14 @@ const coarse = matchMedia('(pointer: coarse)').matches
 
 function measure() {
   vh = innerHeight
-  maxScroll = Math.max(0, document.documentElement.scrollHeight - vh)
+  maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
   const stage = document.querySelector<HTMLElement>('.stage')
   sticky = !!stage && getComputedStyle(stage).position === 'sticky'
   if (!sticky) roles.forEach(clearLook)
   anchors = []
   for (const c of chapters) {
     const r = c.el.getBoundingClientRect()
-    c.top = r.top + scrollY
+    c.top = r.top + sy()
     c.height = r.height
     c.key0 = anchors.length
     c.anchors = []
@@ -64,7 +70,7 @@ function measure() {
       } else {
         roles.forEach((li) => {
           const rr = li.getBoundingClientRect()
-          c.anchors.push(rr.top + scrollY + rr.height / 2 - vh / 2)
+          c.anchors.push(rr.top + sy() + rr.height / 2 - vh / 2)
         })
       }
     } else if (c.id === 'hello') {
@@ -91,9 +97,9 @@ function keyT(y: number) {
 
 /* ---------------------------------------------------------------- smooth wheel scrolling */
 const smoothWheel = FX && !coarse
-let cur = scrollY
-let target = scrollY
-let expected = scrollY
+let cur = sy()
+let target = sy()
+let expected = sy()
 let lastInput = 0
 let snapping = false
 let originKey = 0
@@ -133,7 +139,7 @@ function goTo(y: number, instant = false) {
   y = clamp(y, 0, maxScroll)
   if (instant) {
     cur = target = expected = y
-    window.scrollTo(0, y)
+    scroller.scrollTo(0, y)
     return
   }
   if (smoothWheel && sticky) {
@@ -142,7 +148,7 @@ function goTo(y: number, instant = false) {
     originKey = nearestKey(y)
   } else {
     snapping = true
-    window.scrollTo({ top: y, behavior: 'smooth' })
+    scroller.scrollTo({ top: y, behavior: 'smooth' })
   }
 }
 
@@ -152,7 +158,7 @@ function goChapter(id: string) {
 }
 
 function stepKey(dir: number) {
-  const base = smoothWheel ? target : scrollY
+  const base = smoothWheel ? target : sy()
   const k = nearestKey(base)
   let next = k + dir
   if (dir > 0 && anchors[k] > base + 2) next = k
@@ -169,8 +175,8 @@ function scrollTick(dt: number) {
     if (Math.abs(target - cur) < 0.25) cur = target
     const dpr = window.devicePixelRatio || 1
     const yw = Math.round(cur * dpr) / dpr
-    if (Math.abs(yw - scrollY) > 0.25) {
-      window.scrollTo(0, yw)
+    if (Math.abs(yw - sy()) > 0.25) {
+      scroller.scrollTo(0, yw)
       expected = yw
     }
     if (!snapping && t - lastInput > 170 && Math.abs(target - cur) < vh * 0.6) {
@@ -179,27 +185,27 @@ function scrollTick(dt: number) {
       else if (s !== null) { snapping = true; originKey = nearestKey(s) }
     }
   } else if (FX && sticky && !touching && !snapping && t - lastScrollEvt > 220 && lastScrollEvt > 0) {
-    const s = snapTarget(scrollY)
+    const s = snapTarget(sy())
     snapping = true
-    if (s !== null && Math.abs(s - scrollY) > 2) window.scrollTo({ top: s, behavior: 'smooth' })
-    originKey = nearestKey(s ?? scrollY)
+    if (s !== null && Math.abs(s - sy()) > 2) scroller.scrollTo({ top: s, behavior: 'smooth' })
+    originKey = nearestKey(s ?? sy())
   }
 }
 
-addEventListener('scroll', () => {
+scrollEvents.addEventListener('scroll', () => {
   lastScrollEvt = now()
-  if (smoothWheel && Math.abs(scrollY - expected) > 4 && Math.abs(scrollY - cur) > 4) {
+  if (smoothWheel && Math.abs(sy() - expected) > 4 && Math.abs(sy() - cur) > 4) {
     // scrollbar drag, find-in-page, focus scrolling: follow the browser
-    cur = target = expected = scrollY
+    cur = target = expected = sy()
     lastInput = now()
     snapping = false
   }
-  if (!smoothWheel && !touching && snapping && Math.abs(scrollY - anchors[nearestKey(scrollY)]) < 2) originKey = nearestKey(scrollY)
+  if (!smoothWheel && !touching && snapping && Math.abs(sy() - anchors[nearestKey(sy())]) < 2) originKey = nearestKey(sy())
 }, { passive: true })
 
 if (FX) {
   addEventListener('wheel', onWheel, { passive: false })
-  addEventListener('touchstart', () => { touching = true; snapping = false; originKey = nearestKey(scrollY) }, { passive: true })
+  addEventListener('touchstart', () => { touching = true; snapping = false; originKey = nearestKey(sy()) }, { passive: true })
   addEventListener('touchend', () => { touching = false; lastScrollEvt = now() }, { passive: true })
   addEventListener('keydown', (e) => {
     if (!sticky || e.altKey || e.metaKey || e.ctrlKey) return
@@ -351,7 +357,7 @@ function updatePanels(y: number, t: number, dt: number) {
     const c = chapters[idx]
     setLabel(c.label, dir)
     navLinks.forEach((a) => a.classList.toggle('is-active', a.dataset.go === c.id))
-    if (FX && scrollY > 10) history.replaceState(null, '', c.id === 'hello' ? location.pathname : '#' + c.id)
+    if (FX && sy() > 10) history.replaceState(null, '', c.id === 'hello' ? location.pathname : '#' + c.id)
   }
 
   const k = Math.round(t)
@@ -385,7 +391,7 @@ addEventListener('resize', () => {
   lastW = innerWidth; lastH = innerHeight
   clearTimeout(resizeTimer)
   resizeTimer = window.setTimeout(() => {
-    const t = keyT(scrollY)
+    const t = keyT(sy())
     measure()
     buildHud()
     const k = Math.floor(t), u = t - k
@@ -412,7 +418,7 @@ function init() {
     const dt = Math.min((t0 - last) / 1000, 1 / 20)
     last = t0
     if (FX) scrollTick(dt)
-    const y = FX && smoothWheel && sticky ? cur : scrollY
+    const y = FX && smoothWheel && sticky ? cur : sy()
     const t = keyT(y)
     if (FX) updatePanels(y, t, dt)
     if (warpOut && gl) {

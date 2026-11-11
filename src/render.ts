@@ -241,6 +241,9 @@ export function head(page: 'home' | 'cv') {
   <meta name="author" content="Miroslaw Shpak">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <meta name="theme-color" content="#07060c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="color-scheme" content="dark">
   <meta property="og:type" content="profile">
   <meta property="profile:first_name" content="Miroslaw">

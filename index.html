@@ -39,7 +39,11 @@
       } catch (e) { ok = false }
       if (/[?&]nofx/.test(location.search)) ok = false
       d.className += ok ? ' fx' : ' nofx'
-      if (ok && !matchMedia('(pointer: coarse)').matches) d.className += ' preload'
+      var touch = false
+      try { touch = matchMedia('(pointer: coarse)').matches } catch (e) {}
+      if (ok && !touch) d.className += ' preload'
+      // touch: scroll inside <body> so mobile Safari's toolbar stays put (see main.ts)
+      if (touch && !/[?&]noinscroll/.test(location.search)) d.className += ' inscroll'
       if ('scrollRestoration' in history && ok) history.scrollRestoration = 'manual'
     })()
   </script>

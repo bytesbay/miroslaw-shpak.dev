@@ -36,6 +36,11 @@ p { margin: 0 0 10px; }
 .btn-primary { background: linear-gradient(135deg, #ff2a75, #c41a8a); border-color: transparent; }
 .foot { max-width: 860px; margin: 0 auto; padding: 30px 24px 50px; color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .foot p { margin: 0; }
+/* notch, Dynamic Island and home indicator (viewport-fit=cover) */
+@supports (padding: max(0px)) {
+  .cv { padding: max(64px, calc(env(safe-area-inset-top) + 24px)) max(24px, env(safe-area-inset-right)) 24px max(24px, env(safe-area-inset-left)); }
+  .foot { padding: 30px max(24px, env(safe-area-inset-right)) calc(50px + env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
+}
 .lost { min-height: 80vh; display: flex; flex-direction: column; justify-content: center; }
 
 @media print {

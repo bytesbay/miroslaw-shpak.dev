@@ -17,6 +17,14 @@
   --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   --pixel: 'Pixel', var(--mono);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* notch, Dynamic Island and home indicator (viewport-fit=cover) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --gut: clamp(20px, 6vw, 96px);
+  --gut-l: max(var(--gut), calc(var(--sal) + 12px));
+  --gut-r: max(var(--gut), calc(var(--sar) + 12px));
   color-scheme: dark;
 }
 
@@ -30,6 +38,9 @@ body {
   overflow-x: hidden;
 }
 a { color: inherit; }
+/* touch devices: <body> is the scroller, so mobile Safari's toolbar does not collapse and expand while scrolling */
+html.inscroll { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html.inscroll body { height: 100%; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
 ::selection { background: var(--accent); color: #fff; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 
@@ -82,8 +93,8 @@ html.fx.preload.loaded .loader { opacity: 0; visibility: hidden; pointer-events:
 .topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 18px clamp(18px, 3vw, 40px);
-  background: linear-gradient(#07060ccc, #07060c00);
+  padding: calc(18px + var(--sat)) max(clamp(18px, 3vw, 40px), calc(var(--sar) + 8px)) 18px max(clamp(18px, 3vw, 40px), calc(var(--sal) + 8px));
+  background: linear-gradient(#07060ccc var(--sat), #07060c00);
 }
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
 .nav { display: flex; align-items: center; gap: clamp(10px, 2vw, 26px); font-size: 14px; }
@@ -104,7 +115,7 @@ html.fx.preload.loaded .loader { opacity: 0; visibility: hidden; pointer-events:
 
 /* ------------------------------------------------------------ content (static base) */
 main { position: relative; z-index: 2; }
-.ch { position: relative; padding: 14vh clamp(20px, 6vw, 96px); }
+.ch { position: relative; padding: 14vh var(--gut-r) 14vh var(--gut-l); }
 .stage { position: relative; }
 .panel { position: relative; max-width: 640px; }
 
@@ -172,14 +183,14 @@ p { margin: 0 0 14px; color: #ddd8e8; }
 .contacts svg { width: 18px; height: 18px; color: var(--accent); }
 .gh-count { font: 400 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-2); padding: 4px 7px; border-radius: 999px; background: rgba(255, 181, 71, 0.1); border: 1px solid rgba(255, 181, 71, 0.25); }
 
-.foot { position: relative; z-index: 2; padding: 40px clamp(20px, 6vw, 96px) 60px; color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+.foot { position: relative; z-index: 2; padding: 40px var(--gut-r) calc(60px + var(--sab)) var(--gut-l); color: var(--dim); font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
 .foot p { margin: 0; color: #b4aec4; }
 .foot a { color: var(--muted); }
 
 .hud, .scroll-tip { display: none; }
 
 /* ------------------------------------------------------------ 3D story mode */
-html.fx .ch { padding: 0 clamp(20px, 6vw, 96px); height: calc((1 + var(--len)) * 100vh); height: calc((1 + var(--len)) * 100svh); }
+html.fx .ch { padding: 0 var(--gut-r) 0 var(--gut-l); height: calc((1 + var(--len)) * 100vh); height: calc((1 + var(--len)) * 100svh); }
 html.fx .stage { position: sticky; top: 0; height: 100vh; height: 100svh; display: flex; align-items: center; }
 html.fx .panel {
   opacity: var(--v, 0);
@@ -229,7 +240,7 @@ html.fx .orbit-dots li.on a { border-color: var(--accent); }
 
 /* HUD: step ruler borrowed from the Shuttle site */
 html.fx .hud {
-  display: block; position: fixed; left: 50%; bottom: 5.5vh; z-index: 15; transform: translateX(-50%);
+  display: block; position: fixed; left: 50%; bottom: calc(5.5vh + var(--sab)); z-index: 15; transform: translateX(-50%);
   pointer-events: none; opacity: 0; transition: opacity 0.8s var(--ease);
 }
 html.fx.scrolled .hud { opacity: 1; }
@@ -256,7 +267,7 @@ html.fx.at-end .hud-ruler { pointer-events: none; }
 .hud-strip i.cp:hover::after { background: var(--accent); }
 .hud-pin { position: absolute; left: 50%; top: 100%; width: 22px; transform: translateX(-50%); fill: #fafafa; }
 
-html.fx .scroll-tip { display: block; position: fixed; left: 50%; bottom: 3.5vh; z-index: 15; width: 22px; height: 36px; margin-left: -11px; border: 2px solid var(--accent); border-radius: 12px; transition: opacity 0.6s; }
+html.fx .scroll-tip { display: block; position: fixed; left: 50%; bottom: calc(3.5vh + var(--sab)); z-index: 15; width: 22px; height: 36px; margin-left: -11px; border: 2px solid var(--accent); border-radius: 12px; transition: opacity 0.6s; }
 html.fx .scroll-tip span { position: absolute; left: 50%; top: 7px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--accent); animation: tip 1.8s var(--ease) infinite; }
 html.fx.scrolled .scroll-tip { opacity: 0; visibility: hidden; transition: opacity 0.6s, visibility 0s 0.6s; }
 html.fx.scrolled .scroll-tip span { animation: none; }
@@ -271,11 +282,11 @@ html.fx.scrolled .scroll-tip span { animation: none; }
 @media (max-width: 760px), (max-height: 560px) {
   body { font-size: 16px; }
   /* Flow layout on phones: content scrolls natively, the 3D still follows. */
-  html.fx .ch { height: auto; min-height: 100svh; padding: 18svh 20px 10svh; }
+  html.fx .ch { height: auto; min-height: 100svh; padding: calc(18svh + var(--sat)) max(20px, calc(var(--sar) + 12px)) 10svh max(20px, calc(var(--sal) + 12px)); }
   html.fx .stage { position: relative; height: auto; display: block; padding: 0 !important; }
   html.fx .ch-hello { min-height: 100svh; }
   html.fx .ch-hello .stage { padding-top: 10svh !important; }
-  html.fx .ch-career { padding-top: 14svh; }
+  html.fx .ch-career { padding-top: calc(14svh + var(--sat)); }
   html.fx .roles { display: grid; gap: 14px; grid-template-areas: none; }
   html.fx .role { grid-area: auto; opacity: 1; transform: none; }
   html.fx .role.is-off { visibility: visible; }
@@ -305,7 +316,7 @@ html.nofx .ch-approach .panel { max-width: 1000px; }
 }
 /* footer overlays the empty bottom of the last sticky stage, so Contact never scrolls under the top bar */
 @media (min-width: 761px) and (min-height: 561px) {
-  html.fx .foot { margin-top: -160px; min-height: 160px; align-items: flex-end; padding-bottom: 28px; pointer-events: none; background: linear-gradient(to bottom, transparent, rgba(7, 6, 12, 0.88) 55%, #07060c); }
+  html.fx .foot { margin-top: -160px; min-height: 160px; align-items: flex-end; padding-bottom: calc(28px + var(--sab)); pointer-events: none; background: linear-gradient(to bottom, transparent, rgba(7, 6, 12, 0.88) 55%, #07060c); }
   html.fx .foot a { pointer-events: auto; }
 }
 
