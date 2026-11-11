@@ -245,7 +245,7 @@ document.addEventListener('click', (e) => {
 /* ---------------------------------------------------------------- panels, HUD, nav */
 let activeCh = -1
 let hudOffset = 0
-const lastV = new Map<HTMLElement, string>()
+let hudTf = ''
 // Opacity, offset and blur are written as plain inline styles. WebKit does not always repaint
 // properties that go through calc(var(--v)), which left Safari showing stale, blurred panels.
 function setLook(el: HTMLElement, v: number, dir: number, dist: number, blur: boolean, scale = false) {
@@ -364,7 +364,8 @@ function updatePanels(y: number, t: number, dt: number) {
     hudOffset += (t * STEP - hudOffset) * (1 - Math.pow(1 - 0.08, dt * 60))
     // snap to device pixels so the tick and the rotated diamond stay on the same pixel column
     const dpr = window.devicePixelRatio || 1
-    hudStrip.style.transform = `translate3d(${Math.round((260 - hudOffset) * dpr) / dpr}px,0,0)`
+    const tf = `translate3d(${Math.round((260 - hudOffset) * dpr) / dpr}px,0,0)`
+    if (tf !== hudTf) { hudStrip.style.transform = tf; hudTf = tf }   // no style writes while nothing moves
   }
 }
 
@@ -405,7 +406,7 @@ function init() {
     else goTo(0, true)
   }
   let last = now()
-  let lastT = -1, lastMx = 0, lastMy = 0, idleSince = now(), skip = false, glDt = 0
+  let lastT = -1, lastMx = 0, lastMy = 0, idleSince = now(), lastGl = 0, glDt = 0, warpText = ''
   const loop = () => {
     const t0 = now()
     const dt = Math.min((t0 - last) / 1000, 1 / 20)
@@ -414,16 +415,18 @@ function init() {
     const y = FX && smoothWheel && sticky ? cur : scrollY
     const t = keyT(y)
     if (FX) updatePanels(y, t, dt)
-    if (warpOut && gl) warpOut.textContent = gl.warp.toFixed(2)
+    if (warpOut && gl) {
+      const w = gl.warp.toFixed(2)
+      if (w !== warpText) { warpOut.textContent = w; warpText = w }   // a DOM write per frame forced layout even at rest
+    }
     // full frame rate while anything moves, 30 fps when the scene is just idling
     const moving = Math.abs(t - lastT) > 1e-4 || mx !== lastMx || my !== lastMy
     if (moving) idleSince = t0
     lastT = t; lastMx = mx; lastMy = my
     glDt += dt
-    skip = t0 - idleSince > 1500 ? !skip : false
+    // ~30 fps at rest on any display (was half the refresh rate, so 60 fps on 120 Hz screens)
     const idle = t0 - idleSince > 1500
-    if (gl && !skip) { gl.frame(glDt, t, mx, my, !idle); glDt = 0 }
-    ;(window as any).__q = gl?.quality()
+    if (gl && (!idle || t0 - lastGl >= 30)) { gl.frame(glDt, t, mx, my); glDt = 0; lastGl = t0 }
     if (FX) requestAnimationFrame(loop)
   }
   requestAnimationFrame(loop)
@@ -431,14 +434,21 @@ function init() {
   if (FX) {
     const bar = document.querySelector<HTMLElement>('.loader-bar')
     const progress = (p: number) => bar?.style.setProperty('--p', String(Math.max(0.04, p)))
-    const done = () => html.classList.add('loaded')
+    const done = () => {
+      if (html.classList.contains('loaded')) return
+      html.classList.add('loaded')
+      setTimeout(() => document.querySelector('.loader')?.remove(), 1500)   // stops its animations for good
+    }
     setTimeout(done, 9000) // never keep the page behind the loader
     progress(0.04)
-    const boot = () =>
-      import('./gl/index')
-        .then((m) => { progress(0.08); return m.start(document.getElementById('gl') as HTMLCanvasElement, () => { html.classList.add('gl-ready'); done() }, progress) })
+    const boot = () => {
+      // model and 3D code download in parallel
+      const model = fetch('/models/shuttle.glb').then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null)
+      return import('./gl/index')
+        .then((m) => { progress(0.08); return m.start(document.getElementById('gl') as HTMLCanvasElement, () => { html.classList.add('gl-ready'); done() }, progress, model) })
         .then((g) => { gl = g })
         .catch((err) => { console.warn('3D disabled:', err); done(); html.classList.replace('fx', 'nofx'); measure() })
+    }
     // start after the page itself has loaded, so 3D setup never competes with the first render
     const go = () => ('requestIdleCallback' in window ? (window as any).requestIdleCallback(boot, { timeout: 600 }) : setTimeout(boot, 30))
     if (document.readyState === 'complete') go()
@@ -504,4 +514,3 @@ const idle = (fn: () => void) => ('requestIdleCallback' in window ? (window as a
 addEventListener('load', () => idle(() => { refreshStars(); refreshFollowers() }), { once: true })
 
 document.fonts?.ready.then(init, init) ?? init()
-void lastV

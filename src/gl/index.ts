@@ -11,13 +11,13 @@ import {
 import { makeAtmosphere, makePlanetRing, makeStars, makeDust, makeOrbit, makeTrail, glowTexture, glowSprite } from './world'
 import { makeDetailedPlanet, sphereCube, bindRotation, makeClouds, makeHomePatch } from './planet'
 
-export type Gl = { frame(dt: number, t: number, mx: number, my: number, measure?: boolean): void; resize(): void; warp: number; quality: () => number }
+export type Gl = { frame(dt: number, t: number, mx: number, my: number): void; resize(): void; warp: number }
 
 const SHUTTLE_SCALE = 12
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
 
-export async function start(canvas: HTMLCanvasElement, onReady: () => void, onProgress: (p: number) => void = () => {}): Promise<Gl> {
+export async function start(canvas: HTMLCanvasElement, onReady: () => void, onProgress: (p: number) => void = () => {}, modelData?: Promise<ArrayBuffer | null>): Promise<Gl> {
   const weak = matchMedia('(pointer: coarse)').matches || (navigator as any).deviceMemory < 4
   // Pixel-art rendering: the scene is drawn at ~300 lines and scaled up with nearest-neighbour
   // filtering (image-rendering: pixelated). Same look on every device, and a fraction of the GPU cost.
@@ -174,6 +174,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   scene.add(orbit.line)
   const trail = makeTrail((s, out) => capturePoint(s, out))
   scene.add(trail.line)
+  const BEACON_ON = new Color('#ff7fb0'), BEACON_OFF = new Color('#ff2a75')
   const beacons: Sprite[] = []
   for (let j = 0; j < CAREER_COUNT; j++) {
     const b = glowSprite(glowTex, '#ff2a75', 14)
@@ -241,33 +242,35 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
 
   const loader = new GLTFLoader()
   loader.setMeshoptDecoder(MeshoptDecoder)
-  const model = new Promise<void>((resolve) => {
-    setTimeout(resolve, 8000)
-    loader.load('/models/shuttle.glb', (gltf) => {
-    const m = gltf.scene
-    m.scale.setScalar(SHUTTLE_SCALE)
-    // three meshes (hull + two cargo doors), one brushed-metal material with baked vertex colours
-    const hull = new MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.34, envMapIntensity: 1.4 })
-    m.traverse((o) => {
-      const mesh = o as Mesh
-      if (mesh.isMesh) {
-        ;(mesh.material as Material).dispose()
-        mesh.material = hull
-        mesh.castShadow = true
-        mesh.receiveShadow = true
+  // The model bytes are fetched by main.ts in parallel with this chunk; fall back to loading here.
+  const model = (async () => {
+    try {
+      const buf = modelData ? await modelData : null
+      const gltf = buf ? await loader.parseAsync(buf, '') : await loader.loadAsync('/models/shuttle.glb')
+      const m = gltf.scene
+      m.scale.setScalar(SHUTTLE_SCALE)
+      // three meshes (hull + two cargo doors), one brushed-metal material with baked vertex colours
+      const hull = new MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.34, envMapIntensity: 1.4 })
+      m.traverse((o) => {
+        const mesh = o as Mesh
+        if (mesh.isMesh) {
+          ;(mesh.material as Material).dispose()
+          mesh.material = hull
+          mesh.castShadow = true
+          mesh.receiveShadow = true
+        }
+      })
+      body.add(m)
+      if (gltf.animations.length) {
+        mixer = new AnimationMixer(m)
+        gltf.animations.forEach((c) => mixer!.clipAction(c).play())
+        mixer.setTime(0)
       }
-    })
-    body.add(m)
-    if (gltf.animations.length) {
-      mixer = new AnimationMixer(m)
-      gltf.animations.forEach((c) => mixer!.clipAction(c).play())
-      mixer.setTime(0)
-    }
-    resolve()
-    }, undefined, () => resolve())
-  })
+    } catch (e) { console.warn('shuttle model failed to load', e) }
+  })()
+  const modelOrTimeout = Promise.race([model, new Promise<void>((r) => setTimeout(r, 8000))])
 
-  await Promise.all([model, homeMesh.userData.ready, destMesh.userData.ready])
+  await Promise.all([modelOrTimeout, homeMesh.userData.ready, destMesh.userData.ready])
   onProgress(0.7)
   await nextFrame()
 
@@ -301,10 +304,10 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
   let pmx = 0, pmy = 0
   const camTarget = new Vector3()
   const tmp = new Vector3(), right = new Vector3(), camUp = new Vector3()
-  const api: Gl = { warp: 0, frame, resize, quality: () => renderer.getPixelRatio() }
+  const api: Gl = { warp: 0, frame, resize }
   let first = true
 
-  function frame(dt: number, t: number, mx: number, my: number, measure = true) {
+  function frame(dt: number, t: number, mx: number, my: number) {
     dt = Math.min(dt, 0.05)
     time += dt
     // Second smoothing stage on top of the smoothed scroll. Same idea as the Shuttle site (0.05 per frame).
@@ -401,7 +404,7 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
       const target = (on ? 5 + Math.sin(time * 3) * 1 : 6) * (0.4 + careerVis * 0.6)
       b.scale.setScalar(MathUtils.lerp(b.scale.x, target, 0.12))
       b.material.opacity = careerVis * (on ? 0.3 : 0.5)
-      b.material.color.set(on ? '#ff7fb0' : '#ff2a75')
+      b.material.color.copy(on ? BEACON_ON : BEACON_OFF)
       b.visible = careerVis > 0.01
     })
 
@@ -424,7 +427,6 @@ export async function start(canvas: HTMLCanvasElement, onReady: () => void, onPr
       first = false
       onReady()
     }
-    void measure
   }
 
   function resize() {
