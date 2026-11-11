@@ -8,9 +8,9 @@ export const SITE = {
   alternateNames: ['Mirosław Shpak', 'Myroslav Shpak', 'Мирослав Шпак', 'bytesbay'],
   title: 'Miroslaw Shpak | Hands-on CTO & Product Engineer',
   description:
-    'Miroslaw Shpak, hands-on CTO and product engineer based in Wrocław, Poland. 11 years in software development, with experience building DeFi, betting and AI products.',
+    'Miroslaw Shpak, hands-on CTO and product engineer in Wrocław, Poland. 11 years building crypto, betting, agrotech and AI infrastructure products.',
   ogDescription:
-    '11 years building software. Hands-on CTO and product engineer working across DeFi, onchain betting and AI agents in production.',
+    '11 years building software. Hands-on CTO and product engineer across crypto, betting, agrotech and AI infrastructure.',
   jobTitle: 'CTO & Co-founder, Software Engineer',
   location: { city: 'Wrocław', country: 'PL', countryName: 'Poland' },
   email: 'bytesbay@icloud.com',
@@ -193,7 +193,7 @@ export const AI_STACK =
 
 export const CONTACT = {
   lead:
-    'Open to Senior/Staff Product Engineer, Tech Lead and hands-on CTO roles. Betting, Web3/DeFi and AI products first, fintech and SaaS too. Remote, hybrid or on-site, and open to relocation.',
+    'Open to Senior/Staff Product Engineer, Tech Lead and hands-on CTO roles. Crypto, betting and AI infrastructure first, agrotech, fintech and SaaS too. Remote, hybrid or on-site, and open to relocation.',
   details: 'Based in Wrocław, Poland. Polish JDG for long-term B2B, full-time employment works as well.',
 }
 
@@ -210,7 +210,7 @@ export const LANGUAGES = 'English C2. Ukrainian and Russian native.'
 export const MOTTO = 'Giterminism and transparency cultist.'
 
 export const DOMAINS = [
-  ['Blockchain / DeFi', '5 years', 'EVM and Solana contracts, exchanges, non-custodial protocols, relayers and indexers.'],
+  ['Crypto / Blockchain', '5 years', 'EVM and Solana contracts, exchanges, non-custodial protocols, relayers and indexers.'],
   ['Betting', '1 year', 'Onchain betting, settlement, risk management, vault security, operations automation.'],
   ['Gamedev', '2 years', 'Web and Unity games, NFT marketplaces, Three.js and GLSL.'],
   ['Agtech', '1.5 years', 'Scientific calculations, soil analysis, sensors and satellite imagery.'],

@@ -185,8 +185,8 @@ export function jsonLd(page: 'home' | 'cv') {
     alumniOf: { '@type': 'CollegeOrUniversity', name: 'Odesa Polytechnic National University' },
     knowsLanguage: ['en', 'uk', 'ru'],
     knowsAbout: [
-      'TypeScript', 'Node.js', 'Solidity', 'Rust', 'Python', 'PHP', 'Smart contracts', 'EVM', 'Solana', 'DeFi', 'Onchain betting',
-      'Prediction markets', 'AI agents', 'Agentic Ops', 'Model Context Protocol', 'Kubernetes', 'Three.js', 'WebGL', 'GLSL',
+      'TypeScript', 'Node.js', 'Solidity', 'Rust', 'Python', 'PHP', 'Smart contracts', 'EVM', 'Solana', 'Crypto', 'DeFi', 'Betting', 'Onchain betting', 'Agrotech',
+      'Prediction markets', 'AI infrastructure', 'AI agents', 'Agentic Ops', 'Model Context Protocol', 'Kubernetes', 'Three.js', 'WebGL', 'GLSL',
       'React', 'Next.js', 'Vue', 'Nuxt', 'NestJS', 'MongoDB', 'PostgreSQL', 'Software architecture', 'Engineering leadership',
     ],
     mainEntityOfPage: { '@id': `${SITE.url}/#page` },
@@ -196,7 +196,7 @@ export function jsonLd(page: 'home' | 'cv') {
       '@type': 'Occupation',
       name: 'Chief Technology Officer',
       occupationLocation: { '@type': 'City', name: 'Wrocław' },
-      skills: 'TypeScript, Solidity, Rust, Python, PHP, Node.js, Kubernetes, AI agents, Web3',
+      skills: 'TypeScript, Solidity, Rust, Python, PHP, Node.js, Kubernetes, AI infrastructure, crypto',
     },
     sameAs: [SITE.links.linkedin, SITE.links.github, SITE.links.telegram, SITE.links.devto, SITE.links.hashnode],
   }
@@ -231,7 +231,7 @@ export function head(page: 'home' | 'cv') {
   const title = page === 'cv' ? 'Miroslaw Shpak | CV | Hands-on CTO & Product Engineer' : SITE.title
   const desc =
     page === 'cv'
-      ? 'CV of Miroslaw Shpak: hands-on CTO and senior software engineer. TypeScript, Solidity, Rust, Python, Kubernetes and AI agents. Wrocław, Poland. Open to Staff, Tech Lead and CTO roles.'
+      ? 'CV of Miroslaw Shpak: hands-on CTO and product engineer in crypto, betting, agrotech and AI infrastructure. TypeScript, Solidity, Rust, Kubernetes. Wrocław, Poland.'
       : SITE.description
   const shareDesc = page === 'cv' ? desc : SITE.ogDescription
   return `
