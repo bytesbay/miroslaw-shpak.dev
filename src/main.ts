@@ -493,8 +493,17 @@ function refreshStars() {
     if (n > shown) {
       el.textContent = `★ ${n}`
       el.setAttribute('aria-label', `${n} GitHub stars`)
+      sortByStars(el.closest('ul'))
     }
   })
+}
+// Keeps the project with the most stars on top when live counts change the order.
+function sortByStars(list: HTMLElement | null) {
+  if (!list) return
+  const count = (li: Element) => Number((li.querySelector('.os-stars')?.textContent || '').replace(/\D/g, ''))
+  const items = Array.from(list.children)
+  const sorted = [...items].sort((a, b) => count(b) - count(a))
+  if (sorted.some((li, i) => li !== items[i])) sorted.forEach((li) => list.append(li))
 }
 // Live GitHub follower count on the contact button, same idea as the stars.
 async function refreshFollowers() {

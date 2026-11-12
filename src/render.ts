@@ -105,8 +105,14 @@ function career() {
     </div></div>`
 }
 
+/** Projects with the most GitHub stars first. */
+function byStars(stars: Stars) {
+  const count = (p: (typeof OPEN_SOURCE)[number]) => stars[p.repo] ?? p.stars
+  return [...OPEN_SOURCE].sort((a, b) => count(b) - count(a))
+}
+
 function openSource(stars: Stars) {
-  const items = OPEN_SOURCE.map((p) => {
+  const items = byStars(stars).map((p) => {
     const n = stars[p.repo] ?? p.stars
     return `<li><a href="${p.href}" target="_blank" rel="noopener"><span class="os-name">${esc(p.name)}</span><span class="os-stars" data-repo="${p.repo}" aria-label="${n} GitHub stars">★ ${n}</span><span class="os-text">${esc(p.text)}</span></a></li>`
   }).join('')
@@ -279,7 +285,7 @@ export function renderCv(stars: Stars) {
   const roles = CAREER.map((r) => `<li>${roleArticle(r, 3)}</li>`).join('')
   const domains = DOMAINS.map(([d, y, w]) => `<tr><th scope="row">${esc(d)}</th><td>${esc(y)}</td><td>${esc(w)}</td></tr>`).join('')
   const stack = STACK.map((g) => `<p><b>${esc(g.group)}:</b> ${esc(g.items.join(', '))}</p>`).join('')
-  const os = OPEN_SOURCE.map((p) => {
+  const os = byStars(stars).map((p) => {
     const n = stars[p.repo] ?? p.stars
     return `<li><a href="${p.href}" target="_blank" rel="noopener">${esc(p.name)}</a> (★ ${n}). ${esc(p.text)}</li>`
   }).join('')
@@ -336,7 +342,7 @@ ${roles}
 ${STACK.map((g) => `- ${g.group}: ${g.items.join(', ')}`).join('\n')}
 
 ## Open source
-${OPEN_SOURCE.map((p) => `- ${p.name} (${stars[p.repo] ?? p.stars} stars): ${p.text} ${p.href}`).join('\n')}
+${byStars(stars).map((p) => `- ${p.name} (${stars[p.repo] ?? p.stars} stars): ${p.text} ${p.href}`).join('\n')}
 
 ## Education and languages
 ${EDUCATION}. ${LANGUAGES}

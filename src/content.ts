@@ -184,7 +184,7 @@ export const OPEN_SOURCE = [
     repo: 'bytesbay/pi-gpui',
     href: 'https://pi-gpui.dev',
     text: 'An editor I built for pi coding agent users. Yes, you can call it niche.',
-    stars: 22,
+    stars: 98,
   },
 ]
 
